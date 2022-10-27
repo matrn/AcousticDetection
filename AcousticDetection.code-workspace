@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "AcousticDetection_SW",
+			"path": "AcousticDetection_SW"
+		}
+	],
+	"settings": {}
+}
