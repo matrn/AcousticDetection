@@ -6,7 +6,7 @@
 
 template<typename T, size_t N>
 class CircularBuffer {
-	T data[N];
+	T data[N] = {0};
 	int current_pos = 0;
 	int zero_pos = 0;
 

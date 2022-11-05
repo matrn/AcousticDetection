@@ -2,8 +2,10 @@
 #define LIB_I2S_MIC_HPP
 
 
+#include <functional>
 #include <Arduino.h>
 #include <driver/i2s.h>
+#include <soc/i2s_reg.h>
 
 // I2S
 #define I2S_SAMPLE_RATE 44100  // 44.1 kHz
@@ -11,18 +13,28 @@
 #define I2S_DMA_BUF_LEN 1024
 
 
-#define precision_t int32_t
+typedef int32_t i2s_sample_t; 
+typedef int16_t audio_sample_t;
 
-class Mic {
+
+class LRMics {
 	i2s_port_t i2s_port;
 	i2s_pin_config_t i2s_pins;
 	
 	// The 4 high bits are the channel, and the data is inverted
 	size_t bytes_read;
-	precision_t buffer[I2S_DMA_BUF_LEN] = {0};
+	i2s_sample_t raw_samples_buffer[I2S_DMA_BUF_LEN] = {0};
+	audio_sample_t x1_prev = 0;
+	audio_sample_t y1_prev = 0;
+	audio_sample_t x2_prev = 0;
+	audio_sample_t y2_prev = 0;
+
 
    public:
-	Mic(
+	// audio_sample_t left_channel_data[I2S_DMA_BUF_LEN] = {0};
+	// audio_sample_t right_channel_data[I2S_DMA_BUF_LEN] = {0};
+
+	LRMics (
 		i2s_port_t i2s_port = I2S_NUM_0,
 		i2s_pin_config_t i2s_pins = i2s_pin_config_t{
     		.bck_io_num = GPIO_NUM_32,   // BCK = Bit clock line = BCLK
@@ -38,7 +50,7 @@ class Mic {
 		i2s_config_t i2s_config = {
 			.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_RX),
 			.sample_rate = I2S_SAMPLE_RATE,				   // The format of the signal using ADC_BUILT_IN
-			.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,  // or 32BIT
+			.bits_per_sample = I2S_BITS_PER_SAMPLE_32BIT,  // 32bit sample
 			.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
 			.communication_format = I2S_COMM_FORMAT_I2S,
 			.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,
@@ -74,19 +86,48 @@ class Mic {
 		}
 	}
 
-	void read() {
-		i2s_read(this->i2s_port, &buffer, sizeof(buffer), &bytes_read, portMAX_DELAY);
+	void DCfilter(audio_sample_t* x1, audio_sample_t* x2){
+		// source: https://ccrma.stanford.edu/~jos/filters/DC_Blocker_Software_Implementations.html
+		y1_prev = *x1 - x1_prev + 0.995*y1_prev;    // = y1_new
+		x1_prev = *x1;
+		*x1 = y1_prev;
+
+		y2_prev = *x2 - x2_prev + 0.995*y2_prev;   // = y2_new
+		x2_prev = *x2;
+		*x2 = y2_prev;
+	}
+	void read_and_print() {
+		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		//Serial.printf("read %d Bytes\n", bytes_read);
 
-		int samples_read = bytes_read/sizeof(precision_t);
+		int samples_read = bytes_read/sizeof(i2s_sample_t);
 		for (int i = 0; i < samples_read; i ++) {
-			// Serial.printf("[%d] = %d\n", i, buffer[i] & 0x0FFF); // Print with indexes
-			int16_t sample1 = (buffer[i++] & 0xFFFFFFF0) >> 11;
-			int16_t sample2 = (buffer[i] & 0xFFFFFFF0) >> 11;
-			Serial.printf("%d,%d\n", sample1, sample2);  // Print compatible with Arduino Plotter
-			//Serial.printf("%d ", (buffer[i] & 0xFFFFFFF0) >> 11);
+			
+			// Serial.printf("[%d] = %d\n", i, raw_samples_buffer[i] & 0x0FFF); // Print with indexes
+			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
+			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
+			//Serial.println(raw_samples_buffer[i], BIN);
+			//Serial.println(raw_samples_buffer[i]);
+			this->DCfilter(&left, &right);
+			Serial.printf("%d,%d\n", left, right);  // Print compatible with Arduino Plotter
+			//Serial.printf("%d ", (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11);
 		}
 		//Serial.printf("\n");
+	}
+
+
+	void read(std::function<void(audio_sample_t,audio_sample_t)> callback) {
+		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
+		//Serial.printf("read %d Bytes\n", bytes_read);
+
+		int samples_read = bytes_read/sizeof(i2s_sample_t);
+		for (int i = 0; i < samples_read; i ++) {
+			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
+			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
+
+			this->DCfilter(&left, &right);
+			callback(left, right);	
+		}
 	}
 };
 
