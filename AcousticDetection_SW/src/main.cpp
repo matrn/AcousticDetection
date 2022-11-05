@@ -1,15 +1,15 @@
 #include <Arduino.h>
 
 #include "../include/circular_buffer.hpp"
-
+#include "../lib/i2s_mic/mic.hpp"
 
 
 
 
 typedef int16_t adc_sample_t;
 
-#define MIC1_PIN 12
-#define MIC2_PIN 14
+// #define ADC_INPUT1 ADC1_CHANNEL_4	 // pin 32
+// #define ADC_INPUT2 ADC1_CHANNEL_5	 // pin 33
 
 void correlation(adc_sample_t* x1, adc_sample_t* x2, int N) {
 	/*
@@ -28,14 +28,22 @@ void correlation(adc_sample_t* x1, adc_sample_t* x2, int N) {
 
 #define SAMPLES_NUM 512
 
-adc_sample_t x1[SAMPLES_NUM];
-adc_sample_t x2[SAMPLES_NUM];
+// adc_sample_t x1[SAMPLES_NUM];
+// adc_sample_t x2[SAMPLES_NUM];
+
+// ADC adc1(ADC_INPUT1, I2S_NUM_0);
+// ADC adc2(ADC_INPUT2, I2S_NUM_1);
+
+Mic mic(I2S_NUM_0);
+
 
 void setup() {
 	Serial.begin(115200);
-	pinMode(MIC1_PIN, INPUT);
-	pinMode(MIC2_PIN, INPUT);
+	
+	mic.init();
+	//adc2.init();	
 }
 
 void loop() {
+	mic.read();
 }

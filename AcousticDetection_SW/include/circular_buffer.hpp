@@ -16,15 +16,16 @@ class CircularBuffer {
 	}
 
 	void push(T sample){
-		data[current_pos] = sample;
-		current_pos ++;
 		if(current_pos >= N){
-			current_pos = 0;
+			//current_pos = 0;
 			zero_pos ++;
 			if(zero_pos >= N){
 				zero_pos = 0;
 			}
 		}
+
+		data[current_pos%N] = sample;
+		current_pos ++;
 	}
 
 	T operator[](int i){

@@ -1,18 +1,19 @@
+#include <Arduino.h>
 #include <unity.h>
 #include "../include/circular_buffer.hpp"
 
 
 
 void setUp(void) {
-    // set stuff up here
+	// set stuff up here
 }
 
 void tearDown(void) {
-    // clean stuff up here
+	// clean stuff up here
 }
 
 void test_circular_buffer() {
-    CircularBuffer<int, 4> buff;
+	CircularBuffer<int, 4> buff;
 
 
 	buff.push(1);
@@ -20,7 +21,7 @@ void test_circular_buffer() {
 	buff.push(3);
 	buff.push(4);
 
-    TEST_ASSERT_EQUAL_INT(buff[0], 1);
+	TEST_ASSERT_EQUAL_INT(buff[0], 1);
 	TEST_ASSERT_EQUAL_INT(buff[1], 2);
 	TEST_ASSERT_EQUAL_INT(buff[2], 3);
 	TEST_ASSERT_EQUAL_INT(buff[3], 4);
@@ -58,11 +59,14 @@ void test_circular_buffer() {
 }
 
 
+void setup(){
+	delay(2000); // service delay
+	UNITY_BEGIN();
 
-int main( int argc, char **argv) {
-    UNITY_BEGIN();
+	RUN_TEST(test_circular_buffer);
 
-    RUN_TEST(test_circular_buffer);
+	UNITY_END();
+}
 
-    UNITY_END();
+void loop(){
 }
