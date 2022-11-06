@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+
+<head>
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="chart">
+
+	</canvas>
+
+
+	<script>
+		function rad2deg (radians) {
+  return radians * (180 / Math.PI);
+}
+
+function deg2rad (degrees) {
+  return degrees * (Math.PI / 180);
+}
+		class Chart {
+			constructor(canvas) {
+				this.canvas = canvas;
+				this.ctx = this.canvas.getContext("2d");
+				
+				this._recompute();		
+			}
+
+			_recompute(){
+				this.canvas.width = window.innerWidth;
+				this.canvas.height = window.innerHeight;
+
+				this.centerX = this.canvas.width / 2;
+				this.centerY = this.canvas.height / 2;
+
+				this.grid_line_width = 4;
+				this.grid_style = "#369";
+
+				this.seg_line_width = 2;
+				this.seg_style = "#000";
+
+				this.bg_color = "#fff";
+			}
+
+			_get_font(){
+				if(this.canvas.width<480){
+					this.ctx.font='10x verdana';
+				}else if(this.canvas.width<768){
+					this.ctx.font='20px verdana';
+				}else{
+					this.ctx.font='50px verdana';
+				}
+			}
+
+			_draw_grid() {
+				this.ctx.beginPath();
+
+				let pad = 0.1*Math.min(this.canvas.width, this.canvas.height);   //10% on every side
+				this.arc_radius = Math.min(this.canvas.width / 2, this.canvas.height)-pad;
+				let y_bottom = this.canvas.height/2+this.arc_radius/2;
+				
+				this.arc_center_X = this.centerX;
+				this.arc_center_Y = y_bottom;
+				this.ctx.arc(this.arc_center_X, this.arc_center_Y, this.arc_radius, 0, Math.PI, true);
+				this.ctx.lineWidth = this.grid_line_width;
+				this.ctx.strokeStyle = this.grid_style;
+				
+				this.ctx.moveTo(pad-this.grid_line_width/2, y_bottom);
+				this.ctx.lineTo(this.canvas.width-pad+this.grid_line_width/2, y_bottom);
+				
+				
+				this._get_font();
+				this.ctx.textAlign = "center";
+				
+				for(let a = 0; a <= 180; a += 45){
+					let angle = deg2rad(a);
+					let lg = 1.02;
+					this.ctx.save();
+					this.ctx.translate(this.arc_center_X-this.arc_radius*lg*Math.cos(angle), this.arc_center_Y-this.arc_radius*lg*Math.sin(angle));
+					this.ctx.rotate(-Math.PI/2+angle);
+					
+					
+					this.ctx.fillText(a + '°', 0, 0);
+					this.ctx.restore();
+				}
+				
+				this.ctx.stroke();
+			}
+
+			draw_angle_line(angle_deg, clear=false){
+				this.ctx.beginPath();
+
+				let angle = deg2rad(angle_deg);
+				
+				this.ctx.lineWidth = this.seg_line_width + (clear?2:0);
+				if(clear) this.ctx.strokeStyle = this.bg_color;
+				else this.ctx.strokeStyle = this.seg_style;
+				
+				let pad = this.arc_radius*0.01;
+				this.ctx.moveTo(this.arc_center_X, this.arc_center_Y-pad);
+				this.ctx.lineTo(this.arc_center_X-(this.arc_radius-pad)*Math.cos(angle), this.arc_center_Y-(this.arc_radius-pad)*Math.sin(angle));
+			
+				this.ctx.stroke();
+			}
+
+
+			draw() {
+				this._recompute();
+				this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+				this._draw_grid();
+			}
+		}
+
+
+
+		let chart = new Chart(document.getElementById("chart"));
+		chart.draw();
+		addEventListener('resize', () => {
+			console.log("resize");
+			chart.draw();
+		});
+
+		function draw_result(angle){
+			chart.draw_angle_line(angle);
+			setTimeout(()=>{
+				chart.draw_angle_line(angle, true);
+			}, 1000);
+		}
+
+		draw_result(30);
+		draw_result(142);
+	</script>
+</body>
+
+</html>
