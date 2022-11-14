@@ -28,12 +28,18 @@ class CircularBuffer {
 		current_pos ++;
 	}
 
-	T operator[](int i){
+	T operator[](const int i) const{
 		int pos = i+zero_pos;
 		if(pos >= N){
 			pos -= N;
 		}
 		return data[pos];
+	}
+
+	double avg(){
+		long sum = 0;
+		for(int i = 0; i < N; i ++) sum += this->data[i];
+		return sum/(double)N;
 	}
 };
 
