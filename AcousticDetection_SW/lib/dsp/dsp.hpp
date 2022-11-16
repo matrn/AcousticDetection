@@ -3,11 +3,33 @@
 
 #include <utility>
 
-#include "../include/circular_buffer.hpp"
-#include "../lib/i2s_mic/mic.hpp"
+#include "../../include/types.hpp"
+#include "../../include/circular_buffer.hpp"
+#include "../i2s_mic/config.hpp"
+// #include "../lib/i2s_mic/mic.hpp"
+
+
+
+// ----------SETTINGS----------
+const double sound_speed = 343;		 // [m/s]
+const double mics_distance = 0.145;	 // [m]  = distance between microphones in meters
+// ----------SETTINGS----------
+
+const double Ts = 1. / I2S_SAMPLE_RATE;	 // sample time
+
+const double travel_time_for_max_angle = mics_distance / sound_speed;	// how long does it take for sound wave to travel from one microphone to the other
+
+const double correlation_window_time = travel_time_for_max_angle * 50.0;					// 140% of maximum time difference between audio signals
+const int correlation_window_samples_num = correlation_window_time / Ts + 0.5;	// how many samples should we take for cross correlation computation
+
+const int max_shift_samples_num = travel_time_for_max_angle/Ts+0.99;   // number of samples needed for maximum time, 0.99 = round up
+
+
 
 
 #define XCORR_MOVING_AVG_SIZE 10
+
+
 
 
 class DSP {

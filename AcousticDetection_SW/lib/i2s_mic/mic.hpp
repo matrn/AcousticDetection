@@ -6,15 +6,10 @@
 #include <Arduino.h>
 #include <driver/i2s.h>
 #include <soc/i2s_reg.h>
-
-// I2S
-#define I2S_SAMPLE_RATE 44100  // 44.1 kHz
-#define I2S_DMA_BUF_COUNT 8
-#define I2S_DMA_BUF_LEN 1024
+#include "../../include/types.hpp"
+#include "config.hpp"
 
 
-typedef int32_t i2s_sample_t; 
-typedef int16_t audio_sample_t;
 
 
 class LRMics {
@@ -31,8 +26,8 @@ class LRMics {
 
 
    public:
-	// audio_sample_t left_channel_data[I2S_DMA_BUF_LEN] = {0};
-	// audio_sample_t right_channel_data[I2S_DMA_BUF_LEN] = {0};
+	audio_sample_t left_channel_data[I2S_DMA_BUF_LEN] = {0};
+	audio_sample_t right_channel_data[I2S_DMA_BUF_LEN] = {0};
 
 	LRMics (
 		i2s_port_t i2s_port = I2S_NUM_0,
@@ -116,18 +111,23 @@ class LRMics {
 	}
 
 
-	void read(std::function<void(audio_sample_t,audio_sample_t)> callback) {
+	int read() { //std::function<void(audio_sample_t,audio_sample_t)> callback) {
 		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		//Serial.printf("read %d Bytes\n", bytes_read);
 
 		int samples_read = bytes_read/sizeof(i2s_sample_t);
+		int count = 0;
 		for (int i = 0; i < samples_read; i ++) {
 			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
 			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
 
 			this->DCfilter(&left, &right);
-			callback(left, right);	
+			//callback(left, right);	
+			left_channel_data[i] = left;
+			right_channel_data[i] = right;
+			count ++;
 		}
+		return count;
 	}
 };
 
