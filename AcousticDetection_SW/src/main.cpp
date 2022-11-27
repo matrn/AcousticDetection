@@ -65,10 +65,11 @@ void dsp_func(void *param) {
 		
 
 		#ifdef AUDIO_CAPTURE_SERVER_ENABLED
-			// int sampled = 0;
-			// while(sampled < SAMPLES_PER_REQ){
+			int sampled = 0;
+			uint8_t *data = (uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t)*2);
+			while(sampled < SAMPLES_PER_REQ){
 				int count = sampler->read(true); //[](audio_sample_t left, audio_sample_t right){
-				//sampled += count;
+				
 				
 			// Serial.println("-------LEFT-------");
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->left_channel_data[i]);
@@ -78,20 +79,23 @@ void dsp_func(void *param) {
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->right_channel_data[i]);
 			// Serial.println("-------------------");
 			//if(audio_capture_server_client.connected()){
-				digitalWrite(LED_BUILTIN, HIGH);
-				httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
-				httpClient.addHeader("content-type", "application/octet-stream");
-				uint8_t data[count*sizeof(int16_t)*2];
-				memcpy(data, sampler->left_channel_data, count*sizeof(int16_t));
-				memcpy(data+count*sizeof(int16_t), sampler->right_channel_data, count*sizeof(int16_t));
-
+				
+				
+				memcpy(data+sampled, sampler->left_channel_data, count*sizeof(int16_t));
+				memcpy(data+SAMPLES_PER_REQ*sizeof(int16_t)+sampled, sampler->right_channel_data, count*sizeof(int16_t));
+				sampled += count;
 				// for(int i = 0; i < count*2; i ++){
 				// 	Serial.printf("%d, ", ((int16_t*)data)[i]);
 				// }
 				// Serial.println();
-				httpClient.POST(data, count*2*sizeof(int16_t));
+			}
+				digitalWrite(LED_BUILTIN, HIGH);
+				httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
+				httpClient.addHeader("content-type", "application/octet-stream");
+				httpClient.POST(data, sampled*2*sizeof(int16_t));
 				httpClient.end();
 				digitalWrite(LED_BUILTIN, LOW);
+				free(data);
 				// for(int i = 0; i < count; i ++){
 				// 	audio_sample_t left = sampler->left_channel_data[i];
 				// 	audio_sample_t right = sampler->right_channel_data[i];
