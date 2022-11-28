@@ -19,8 +19,8 @@
 #define AUDIO_CAPTURE_SERVER_ENABLED
 
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
-	#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:8888/i2s_data_stereo"
-	#define SAMPLES_PER_REQ 20480
+	#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:5005/i2s_samples"   //"http://192.168.26.92:5005/i2s_samples"
+	#define SAMPLES_PER_REQ 1024*50
 	#include <HTTPClient.h>
 	unsigned long last_audio_capture_conn_check_time = 0;
 	WiFiClient wifiClient;
@@ -66,11 +66,10 @@ void dsp_func(void *param) {
 
 		#ifdef AUDIO_CAPTURE_SERVER_ENABLED
 			int sampled = 0;
-			uint8_t *data = (uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t)*2);
+			uint8_t *data = (uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t));
 			while(sampled < SAMPLES_PER_REQ){
 				int count = sampler->read(true); //[](audio_sample_t left, audio_sample_t right){
-				
-				
+				//Serial.println(sampled, count);				
 			// Serial.println("-------LEFT-------");
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->left_channel_data[i]);
 			// Serial.println("------------------");
@@ -81,8 +80,7 @@ void dsp_func(void *param) {
 			//if(audio_capture_server_client.connected()){
 				
 				
-				memcpy(data+sampled, sampler->left_channel_data, count*sizeof(int16_t));
-				memcpy(data+SAMPLES_PER_REQ*sizeof(int16_t)+sampled, sampler->right_channel_data, count*sizeof(int16_t));
+				memcpy(data+sampled*sizeof(int16_t), sampler->data, count*sizeof(int16_t));
 				sampled += count;
 				// for(int i = 0; i < count*2; i ++){
 				// 	Serial.printf("%d, ", ((int16_t*)data)[i]);
@@ -92,7 +90,7 @@ void dsp_func(void *param) {
 				digitalWrite(LED_BUILTIN, HIGH);
 				httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
 				httpClient.addHeader("content-type", "application/octet-stream");
-				httpClient.POST(data, sampled*2*sizeof(int16_t));
+				httpClient.POST(data, sampled*sizeof(int16_t));
 				httpClient.end();
 				digitalWrite(LED_BUILTIN, LOW);
 				free(data);

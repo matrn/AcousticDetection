@@ -6,5 +6,9 @@ BUILD_DIR=build
 main: main.cpp
 	${CXX} -o $@ $^ ${CXXFLAGS} ${LDLIBS}
 
+# server: server.cpp
+# 	${CXX} -o $@ $^ ${CXXFLAGS} ${LDLIBS}
+
+
 clean:
-	rm -f main
+	rm -f main t.csv t.raw test.wav

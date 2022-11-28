@@ -26,8 +26,9 @@ class LRMics {
 
 
    public:
-	audio_sample_t left_channel_data[I2S_DMA_BUF_LEN] = {0};
-	audio_sample_t right_channel_data[I2S_DMA_BUF_LEN] = {0};
+	//audio_sample_t left_channel_data[I2S_DMA_BUF_LEN] = {0};
+	//audio_sample_t right_channel_data[I2S_DMA_BUF_LEN] = {0};
+	audio_sample_t data[I2S_DMA_BUF_LEN] = {0};
 
 	LRMics (
 		i2s_port_t i2s_port = I2S_NUM_0,
@@ -111,7 +112,10 @@ class LRMics {
 	}
 
 
-	int read() { //std::function<void(audio_sample_t,audio_sample_t)> callback) {
+	int read(bool dc_filter=true) { //std::function<void(audio_sample_t,audio_sample_t)> callback) {
+		/*
+			returns: number of samples (total number of samples is *2 because of two channels)
+		*/
 		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		//Serial.printf("read %d Bytes\n", bytes_read);
 
@@ -121,11 +125,13 @@ class LRMics {
 			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
 			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
 
-			this->DCfilter(&left, &right);
+			//if(dc_filter) this->DCfilter(&left, &right);
 			//callback(left, right);	
-			left_channel_data[i] = left;
-			right_channel_data[i] = right;
-			count ++;
+			// left_channel_data[count] = left;
+			// right_channel_data[count] = right;
+			data[count++] = left;
+			data[count++] = right;
+			//count ++;
 		}
 		return count;
 	}
