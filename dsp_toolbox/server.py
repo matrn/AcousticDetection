@@ -17,7 +17,7 @@ class MainHandler(tornado.web.RequestHandler):
 		file_raw.write(raw_data)
 		file_raw.flush()
 		#print(raw_data, len(raw_data))
-		print(len(raw_data))
+		print(f'{len(raw_data)/2} samples')
 		if len(raw_data)%4 != 0:
 			self.set_status(400)
 			return self.finish('wrong size')

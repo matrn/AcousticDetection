@@ -2,6 +2,7 @@
 #define CIRCULAR_BUFFER_HPP
 
 
+#include <cstddef>
 
 template<typename T, size_t N>
 class CircularBuffer {
@@ -39,6 +40,10 @@ class CircularBuffer {
 		long sum = 0;
 		for(unsigned int i = 0; i < N; i ++) sum += this->data[i];
 		return sum/(double)N;
+	}
+
+	unsigned int size() const {
+		return N;
 	}
 };
 
