@@ -35,6 +35,20 @@ class Sampler {
 	std::vector<audio_sample_t> sig1;
 	std::vector<audio_sample_t> sig2;
 	size_t sig_len = 0;
+	audio_sample_t x1_prev = 0;
+	audio_sample_t y1_prev = 0;
+	audio_sample_t x2_prev = 0;
+	audio_sample_t y2_prev = 0;
+	void DCfilter(audio_sample_t* x1, audio_sample_t* x2){
+		// source: https://ccrma.stanford.edu/~jos/filters/DC_Blocker_Software_Implementations.html
+		y1_prev = *x1 - x1_prev + 0.995*y1_prev;    // = y1_new
+		x1_prev = *x1;
+		*x1 = y1_prev;
+
+		y2_prev = *x2 - x2_prev + 0.995*y2_prev;   // = y2_new
+		x2_prev = *x2;
+		*x2 = y2_prev;
+	}
 
 	void load(std::string filename) {
 		assert(sizeof(audio_sample_t) == sizeof(int16_t));
@@ -45,6 +59,8 @@ class Sampler {
 		int count = 0;
 		// int from = 4580;
 		// int to = 4900;
+		long x1_sum = 0;
+		long x2_sum = 0;
 		while (true) {
 			auto line = read_and_split_line(file);
 			if (line.size() == 0) break;
@@ -58,11 +74,19 @@ class Sampler {
 			count++;
 			// if (count >= from && count <= to) {
 			sig_n.push_back(count);
-			sig1.push_back(line_int.at(0));
-			sig2.push_back(line_int.at(1));
+			audio_sample_t x1 = line_int.at(0);
+			audio_sample_t x2 = line_int.at(1);
+			x1_sum += x1;
+			x2_sum += x2;
+			DCfilter(&x1, &x2);
+			sig1.push_back(x1);
+			sig2.push_back(x2);
 			// printf("%d, %d\n", line_int.at(0), line_int.at(1));
 			// }
 		}
+		std::cout << "X1 DC offset: " << x1_sum/(double)count << std::endl;
+		std::cout << "X2 DC offset: " << x2_sum/(double)count << std::endl;
+		
 		sig_len = count;
 
 		file.close();
