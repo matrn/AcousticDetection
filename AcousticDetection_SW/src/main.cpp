@@ -154,12 +154,15 @@ void dsp_func(void *param) {
 						digitalWrite(LED_BUILTIN, HIGH);
 						
 						double tau = xcorr_peak.first*(1./I2S_SAMPLE_RATE);
-						int angle = dsp.rad2deg( acos((tau*sound_speed)/mics_distance) )+0.5;
-						char str[10];
-						
-						sprintf(str, "%d", angle);
-						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d\n", xcorr_peak.first, xcorr_peak.second, tau, angle);
-						ws.textAll(str);
+						if(tau >= travel_time_for_max_angle) Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", xcorr_peak.first, xcorr_peak.second, tau);
+						else {
+							int angle = dsp.rad2deg( acos((tau*sound_speed)/mics_distance) )+0.5;
+							char str[10];
+							
+							sprintf(str, "%d", angle);
+							Serial.printf("N: %d, max: %f, tau: %f s, angle: %d\n", xcorr_peak.first, xcorr_peak.second, tau, angle);
+							ws.textAll(str);
+						}
 						digitalWrite(LED_BUILTIN, LOW);
 					}
 				}
