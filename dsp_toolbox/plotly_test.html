@@ -11,32 +11,54 @@
 			margin: 0;
 		}
 	</style>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
 </head>
 
-<body>
-	<div id="log" style="display: none;">
+<body class="p-2">
+	<h2 class="text-center border border-dark rounded mb-2 p-2">Acoustic Detection</h2>
+	<div class="card mb-3">
+		<div class="card-header p-2">
+			<span class="float-start border border-dark rounded p-2">
+				WS:&nbsp;
+				<span id="status-dot">⬤</span>
+				<span id="status-text">WS not loaded</span>
+			</span>
 
-	</div>
+			<span class="float-end border border-dark rounded p-2">
+				Angle:
+				<span id="angle">
+					-
+				</span>
+			</span>
+		</div>
 
-	<div>
-		<span id="status-dot">⬤</span>
-		<span id="status-text">WS not loaded</span>
+		<div class="card-body">
+			<div id="chart"></div>
+		</div>
 	</div>
-
-	<div class="border" style="width:100%; height: 90%;">
-		<div id="chart"></div>
+	
+	<div class="card mb-3">
+		<div class="card-header">
+			Logs
+		</div>
+		<div class="card-body overflow-auto" id="log" style="height: 10rem">	 
+		</div>
 	</div>
+	
 
 
 	<script>
-		GREEN = '#88ff00';
-		RED = '#ff0000';
+		GREEN = '#28a745';
+		RED = '#dc3545';
+		YELLOW = '#ffc107';
 		BLACK = '#000';
 
 		function log(d) {
+			d = new Date().toLocaleTimeString() + ": " + d;
 			console.log(d);
 			var elm = document.getElementById("log");
 			elm.innerHTML = elm.innerHTML + d + "<br>";
+			elm.scrollTo(0, elm.scrollHeight);
 		}
 
 
@@ -58,13 +80,14 @@
 
 			connect() {
 				log("Trying to connect");
-				set_status('yellow', 'Trying to connect')
 				this.socket = new WebSocket(this.protocol + this.host + '/ws');
 
 
 				this.socket.onmessage = function (e) {
 					console.log(e.data);
-					show_angle(parseInt(e.data));
+					let angle = parseInt(e.data);
+					if(angle < 0 || angle > 180) log("ERROR: ANGLE out of range (0-180°) " + angle);
+					else show_angle(angle-90);
 					/*let p = parse_msg(e.data);
 					let type = p.type;
 					let msg = p.msg;
@@ -80,13 +103,13 @@
 				};
 
 				this.socket.onopen = function (e) {
-					log("WebSocket is open now.");
+					log("WS: open now.");
 					set_status(GREEN, 'WS active!');
 				};
 
 				this.socket.onclose = function (e) {
 					var that = this;
-					log('Chat socket closed unexpectedly');
+					log('WS: socket closed unexpectedly');
 					set_status(RED, 'WS closed, reconnecting');
 
 					setTimeout(function () {
@@ -95,7 +118,7 @@
 				}.bind(this);
 
 				this.socket.onerror = function (event) {
-					log("WebSocket error observed:" + event.type);
+					log("WS error observed: " + event.type);
 					console.log(event);
 					set_status(RED, 'WS error: ' + event.type);
 				};
@@ -125,22 +148,28 @@
 
 
 		if (!window.WebSocket) {
-			log("not supported :((");
+			log("!WS not supported!");
 			alert("WS are not supported by your browser");
 		}
 
 		ws = new WS("192.168.0.115");
 		ws.connect();
+		set_status(YELLOW, 'WS: Trying to connect');
 	</script>
 
 	<script>
+		const TIME_TO_HIDE_VALUE = 2000;
+		const BARPOLAR_WIDTH = 10;
+
+
 		function create_data(angle) {
 			return {
+				// docs: https://plotly.com/javascript/reference/barpolar/#barpolar
 				type: "barpolar",
 				//mode: "lines",
 				r: [0, 1],
 				theta: [0, angle],//-10, angle+10],
-				width: 10,
+				width: BARPOLAR_WIDTH,
 				fill: "toself",
 				//fillcolor: color,
 				opacity: 0.7,
@@ -149,16 +178,12 @@
 				// }
 			}
 		}
-		var data = [
-			{type: "barpolar"}
-			// create_data(-90),
-			// create_data(90),
-			// create_data(0),
-			// create_data(1),
+		let data = [
+			{type: "barpolar"}   // to keep chart in polar type, without data and this line chart will be broken
 		]
 
-		margin = 40;
-		var layout = {
+		margin = 20;
+		let layout = {
 			margin: {
 				l: margin,
 				r: margin,
@@ -167,27 +192,21 @@
 				pad: 10
 			},
 			polar: {
-				domain: {
-				},
-
+				// docs: https://plotly.com/javascript/reference/layout/polar/
 				radialaxis: {
 					visible: false,
 				},
 				angularaxis: {
-					//rotation: 90,
+					rotation: 90,
 					dtick: 10,
 					//direction: "counterclockwise"
 				},
 				sector: [0, 180],
-
-
 			},
 
 			showlegend: false
 
-		}
-
-
+		};
 
 		Plotly.newPlot('chart', data, layout, { staticPlot: true, responsive: true });
 
@@ -195,10 +214,12 @@
 			return Math.floor(Math.random() * (max - min)) + min;
 		}
 
+
 		let slots = {};
 
 		function export_and_redraw(){
-			new_data = [{type: "barpolar"}];
+			new_data = [{type: "barpolar"}];      // type: "barpolar" is there to keep chart in polar type, without data and this line chart will be broken
+			
 			for(let key of Object.keys(slots)) new_data.push(create_data(key));
 			//console.log(new_data);
 			data.length = 0;
@@ -206,16 +227,21 @@
 			console.log(data);
 			Plotly.redraw('chart');
 		}
-
+		
+		let angle_elm = document.getElementById("angle");
 		function show_angle(angle){
-			const time_to_hide = 2000;
+			angle_elm.innerHTML = angle + "°";
+			setTimeout(()=>{
+				angle_elm.innerHTML = "-";
+			}, TIME_TO_HIDE_VALUE);
+			
 			if(slots.hasOwnProperty(angle)){
 				clearTimeout(slots[angle].timer);				
 			}
 			slots[angle] = {'timer': setTimeout(()=>{
 				delete slots[angle];
 				export_and_redraw();
-			}, time_to_hide)};
+			}, TIME_TO_HIDE_VALUE)};
 			export_and_redraw();
 		}
 		// setInterval(()=>{
