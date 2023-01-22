@@ -16,16 +16,19 @@
 
 
 
-#define AUDIO_CAPTURE_SERVER_ENABLED
+//#define AUDIO_CAPTURE_SERVER_ENABLED
 
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
 	#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:5005/i2s_samples"   //"http://192.168.26.92:5005/i2s_samples"
+	//#define AUDIO_CAPTURE_SERVER_URL "http://10.42.0.1:5005/i2s_samples"
 	#define SAMPLES_PER_REQ 1024*50
 	#include <HTTPClient.h>
 	unsigned long last_audio_capture_conn_check_time = 0;
 	WiFiClient wifiClient;
 	HTTPClient httpClient;
-	WiFiClient audio_capture_server_client;
+	//WiFiClient audio_capture_server_client;
+	//CircularBuffer<uint8_t *, 2> data_for_send;
+	uint8_t* data_for_send;
 #endif
 
 // #define ADC_INPUT1 ADC1_CHANNEL_4	 // pin 32
@@ -35,8 +38,9 @@
 
 // #define SAMPLES_NUM 512
 
-CircularBuffer<audio_sample_t, correlation_window_samples_num> x1;
-CircularBuffer<audio_sample_t, correlation_window_samples_num> x2;
+#define CORR_SIZE correlation_window_samples_num
+CircularBuffer<audio_sample_t, CORR_SIZE> x1;
+CircularBuffer<audio_sample_t, CORR_SIZE> x2;
 
 // ADC adc1(ADC_INPUT1, I2S_NUM_0);
 // ADC adc2(ADC_INPUT2, I2S_NUM_1);
@@ -52,10 +56,16 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 AsyncEventSource events("/events");
 
+OnsetDetector od1;
+OnsetDetector od2;
+
+
 void dsp_func(void *param) {
 	Serial.printf("DSP running on core: %d\n", xPortGetCoreID());
 	LRMics *sampler = (LRMics *)(param); 
 
+	int qq = 0;
+	bool capture_started = false;
 	while (true) {
 		//Serial.println("f");
 		// mics.read_and_print();
@@ -66,10 +76,11 @@ void dsp_func(void *param) {
 
 		#ifdef AUDIO_CAPTURE_SERVER_ENABLED
 			int sampled = 0;
-			uint8_t *data = (uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t));
+			int ppp = 0;
 			while(sampled < SAMPLES_PER_REQ){
 				int count = sampler->read(true); //[](audio_sample_t left, audio_sample_t right){
-				//Serial.println(sampled, count);				
+				
+				Serial.printf("%d, %d\n", count, sampled);				
 			// Serial.println("-------LEFT-------");
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->left_channel_data[i]);
 			// Serial.println("------------------");
@@ -80,20 +91,26 @@ void dsp_func(void *param) {
 			//if(audio_capture_server_client.connected()){
 				
 				
-				memcpy(data+sampled*sizeof(int16_t), sampler->data, count*sizeof(int16_t));
+				memcpy(data_for_send+sampled*sizeof(int16_t), sampler->data, count*sizeof(int16_t));
 				sampled += count;
 				// for(int i = 0; i < count*2; i ++){
 				// 	Serial.printf("%d, ", ((int16_t*)data)[i]);
 				// }
 				// Serial.println();
+				if(ppp == 5) httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
+				if(ppp == 6) httpClient.addHeader("content-type", "application/octet-stream");
+				ppp ++;
 			}
+			//data_for_send.push(data);
+
 				digitalWrite(LED_BUILTIN, HIGH);
-				httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
-				httpClient.addHeader("content-type", "application/octet-stream");
-				httpClient.POST(data, sampled*sizeof(int16_t));
+				
+				httpClient.POST(data_for_send, sampled*sizeof(int16_t));
 				httpClient.end();
 				digitalWrite(LED_BUILTIN, LOW);
-				free(data);
+				//free(data);
+
+
 				// for(int i = 0; i < count; i ++){
 				// 	audio_sample_t left = sampler->left_channel_data[i];
 				// 	audio_sample_t right = sampler->right_channel_data[i];
@@ -106,35 +123,45 @@ void dsp_func(void *param) {
 			int count = sampler->read(); //[](audio_sample_t left, audio_sample_t right){
 
 			for(int i = 0; i < count; i ++){
-				audio_sample_t left = sampler->left_channel_data[i];
-				audio_sample_t right = sampler->right_channel_data[i];
+				audio_sample_t left = sampler->data[i];
+				audio_sample_t right = sampler->data[++i];
 
-				x1.push(left);
-				x2.push(right);
-
-				//if(count%100 != 0) continue;
-				int N = -1;
-
-				auto corr1 = dsp.correlation<correlation_window_samples_num>(x1, x2, correlation_window_samples_num, max_shift_samples_num+1);
-				auto corr2 = dsp.correlation<correlation_window_samples_num>(x2, x1, correlation_window_samples_num, max_shift_samples_num+1);
 				
-				if(corr1.first != -1 && corr2.first != -1){
-					if(corr1.second > corr2.second) N = corr1.first;
-					else N = -corr2.first;
+
+				if(od1.detect(left) && od2.detect(right) && capture_started == false){
+					Serial.println("Capture started");
+					capture_started = true;
 				}
-				else if(corr1.first != -1) N = corr1.first;
-				else if(corr2.first != -1) N = corr2.first;
-				if(N != -1 && N != 0){
-					digitalWrite(LED_BUILTIN, HIGH);
+
+				if(capture_started){
+					x1.push(left);
+					x2.push(right);
+				}
+				// if(qq++ < 512) continue;
+				// qq = 0;
+				
+				if(capture_started && ++qq >= CORR_SIZE){
+					Serial.println("START PROCESSING");
+					qq = 0;
+					capture_started = false;
+
+				
+					std::pair<int, double> xcorr_peak;
+					bool xcorr_peak_found = dsp.xcorr_max<CircularBuffer<audio_sample_t, CORR_SIZE>>(x1, x2, xcorr_peak, CORR_SIZE, max_shift_samples_num+1, true);
 					
-					double tau = N*(1./I2S_SAMPLE_RATE);
-					int angle = dsp.rad2deg( acos((tau*sound_speed)/mics_distance) )+0.5;
-					char str[10];
-					
-					sprintf(str, "%d", angle);
-					Serial.printf("%d, %f s, %d\n", N, tau, angle);
-					ws.textAll(str);
-					digitalWrite(LED_BUILTIN, LOW);
+					Serial.println(xcorr_peak_found);
+					if(xcorr_peak_found){
+						digitalWrite(LED_BUILTIN, HIGH);
+						
+						double tau = xcorr_peak.first*(1./I2S_SAMPLE_RATE);
+						int angle = dsp.rad2deg( acos((tau*sound_speed)/mics_distance) )+0.5;
+						char str[10];
+						
+						sprintf(str, "%d", angle);
+						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d\n", xcorr_peak.first, xcorr_peak.second, tau, angle);
+						ws.textAll(str);
+						digitalWrite(LED_BUILTIN, LOW);
+					}
 				}
 			}
 			//ws.textAll("AA");
@@ -222,14 +249,24 @@ void setup() {
 	Serial.begin(115200);
 	Serial.setDebugOutput(true);
 	Serial.println("ESP32 Acoustic Detection");
-	Serial.printf("xcorr window size: %d\n", correlation_window_samples_num);
+	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
 	Serial.printf("setup running on core: %d\n", xPortGetCoreID());
 	mics.init();
+
+	#ifdef AUDIO_CAPTURE_SERVER_ENABLED
+		data_for_send = (uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t));
+	#endif
+
+	// Serial.println(ESP.getFreeHeap());
+	// for(int i = 0; i < 2; i ++){
+	// 	data_for_send.push((uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t)));
+	// }
+	// Serial.println(ESP.getFreeHeap());
 	// adc2.init();
 
 	// auto start = micros();
 	// for(int i = 0; i < 100; i ++){
-	// 	correlation(x1, x2, correlation_window_samples_num, max_shift_samples_num);
+	// 	correlation(x1, x2, CORR_SIZE, max_shift_samples_num);
 	// }
 	// auto end = micros();
 	// Serial.printf("Correlation time: %f us\n", (end-start)/100.);

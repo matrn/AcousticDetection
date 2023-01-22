@@ -10,7 +10,18 @@
 #include "config.hpp"
 
 
+class DCfilter{
+	audio_sample_t x1_prev = 0;
+	audio_sample_t y1_prev = 0;
 
+   public:
+ 	void filter(audio_sample_t* x1){
+		// source: https://ccrma.stanford.edu/~jos/filters/DC_Blocker_Software_Implementations.html
+		y1_prev = *x1 - x1_prev + 0.995*y1_prev;    // = y1_new
+		x1_prev = *x1;
+		*x1 = y1_prev;
+	}
+};
 
 class LRMics {
 	i2s_port_t i2s_port;
@@ -19,10 +30,9 @@ class LRMics {
 	// The 4 high bits are the channel, and the data is inverted
 	size_t bytes_read;
 	i2s_sample_t raw_samples_buffer[I2S_DMA_BUF_LEN] = {0};
-	audio_sample_t x1_prev = 0;
-	audio_sample_t y1_prev = 0;
-	audio_sample_t x2_prev = 0;
-	audio_sample_t y2_prev = 0;
+	
+	DCfilter dc_filt_1;
+	DCfilter dc_filt_2;
 
 
    public:
@@ -82,16 +92,30 @@ class LRMics {
 		}
 	}
 
-	void DCfilter(audio_sample_t* x1, audio_sample_t* x2){
-		// source: https://ccrma.stanford.edu/~jos/filters/DC_Blocker_Software_Implementations.html
-		y1_prev = *x1 - x1_prev + 0.995*y1_prev;    // = y1_new
-		x1_prev = *x1;
-		*x1 = y1_prev;
+	
+	audio_sample_t parse_value(i2s_sample_t sample){
+		//Serial.print(sample);
+		sample = (sample & 0xFFFFFFF0) >> 11;
 
-		y2_prev = *x2 - x2_prev + 0.995*y2_prev;   // = y2_new
-		x2_prev = *x2;
-		*x2 = y2_prev;
+		audio_sample_t low = sample&0xFFFF;
+
+		if(sample > 0 && low < 0) return INT16_MAX;
+		else if(sample < 0 && low > 0) return INT16_MIN;
+		// Serial.print(",");
+		// Serial.print(sample);
+		// Serial.print(",");
+		// Serial.println((int16_t)sample);
+		// result value is 18bit but audio_sample_t is 16bit so we have to limit the value to avoid overflow
+		// if(sample > INT16_MAX) return INT16_MAX;
+		// if(sample < INT16_MIN) return INT16_MIN;
+		return low;
 	}
+
+	void dc_filter(audio_sample_t* x1, audio_sample_t* x2){
+		dc_filt_1.filter(x1);
+		dc_filt_2.filter(x2);
+	}
+
 	void read_and_print() {
 		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		//Serial.printf("read %d Bytes\n", bytes_read);
@@ -100,11 +124,11 @@ class LRMics {
 		for (int i = 0; i < samples_read; i ++) {
 			
 			// Serial.printf("[%d] = %d\n", i, raw_samples_buffer[i] & 0x0FFF); // Print with indexes
-			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
-			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
+			audio_sample_t left = parse_value(raw_samples_buffer[i++]);
+			audio_sample_t right = parse_value(raw_samples_buffer[i]);
 			//Serial.println(raw_samples_buffer[i], BIN);
 			//Serial.println(raw_samples_buffer[i]);
-			this->DCfilter(&left, &right);
+			this->dc_filter(&left, &right);
 			Serial.printf("%d,%d\n", left, right);  // Print compatible with Arduino Plotter
 			//Serial.printf("%d ", (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11);
 		}
@@ -114,7 +138,7 @@ class LRMics {
 
 	int read(bool dc_filter=true) { //std::function<void(audio_sample_t,audio_sample_t)> callback) {
 		/*
-			returns: number of samples (total number of samples is *2 because of two channels)
+			returns: number of samples (count/2 = number of samples for one channeů)
 		*/
 		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		//Serial.printf("read %d Bytes\n", bytes_read);
@@ -122,11 +146,23 @@ class LRMics {
 		int samples_read = bytes_read/sizeof(i2s_sample_t);
 		int count = 0;
 		for (int i = 0; i < samples_read; i ++) {
-			audio_sample_t left = (raw_samples_buffer[i++] & 0xFFFFFFF0) >> 11;
-			audio_sample_t right = (raw_samples_buffer[i] & 0xFFFFFFF0) >> 11;
+			audio_sample_t left = parse_value(raw_samples_buffer[i++]);
+			audio_sample_t right = parse_value(raw_samples_buffer[i]);
 
-			//if(dc_filter) this->DCfilter(&left, &right);
-			//callback(left, right);	
+			if(dc_filter) this->dc_filter(&left, &right);
+			/*Serial.println("--------------------------");
+			Serial.println("raw:");
+			Serial.println(raw_samples_buffer[i]);
+			Serial.println(raw_samples_buffer[i], BIN);
+			Serial.println("converted:");
+			Serial.println(right);
+			Serial.println(right, BIN);
+			Serial.println("new conv:");
+			Serial.println((raw_samples_buffer[i] << 4) >> 10);
+			Serial.println((raw_samples_buffer[i] << 4) >> 10, BIN);
+			Serial.println("--------------------------");*/
+			
+			//callback(left, right);
 			// left_channel_data[count] = left;
 			// right_channel_data[count] = right;
 			data[count++] = left;
