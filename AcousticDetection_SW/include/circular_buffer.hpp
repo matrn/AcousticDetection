@@ -42,6 +42,13 @@ class CircularBuffer {
 		return avg;
 	}
 
+	double var(const double mean){
+		//1/N * sum of (sample-mean)^2
+		double var = 0;
+		for(unsigned int i = 0; i < N; i ++) var += pow(this->data[i]-mean, 2)/N;  //(sample-mean)^2
+		return var;
+	}
+
 	unsigned int size() const {
 		return N;
 	}
