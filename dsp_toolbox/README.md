@@ -1,3 +1,8 @@
+~~# matplotplusplus install
+- `vcpkg install`: [https://vcpkg.io/en/getting-started.html](https://vcpkg.io/en/getting-started.html)
+- `vcpkg install matplotplusplus`
+~~
+
 # sciplot install
 `sudo apt install gnuplot`
 ```
