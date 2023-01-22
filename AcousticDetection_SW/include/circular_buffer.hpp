@@ -37,9 +37,9 @@ class CircularBuffer {
 	}
 
 	double avg(){
-		long sum = 0;
-		for(unsigned int i = 0; i < N; i ++) sum += this->data[i];
-		return sum/(double)N;
+		double avg = 0;
+		for(unsigned int i = 0; i < N; i ++) avg += this->data[i]/(double)N;
+		return avg;
 	}
 
 	unsigned int size() const {
