@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="log" style="display: none;">
+
+	</div>
+
+	<div>
+		<span id="status-dot">⬤</span>
+		<span id="status-text">WS not loaded</span>
+	</div>
+
+	<div class="border" style="width:100%; height: 90%;">
+		<div id="chart"></div>
+	</div>
+
+
+	<script>
+		GREEN = '#88ff00';
+		RED = '#ff0000';
+		BLACK = '#000';
+
+		function log(d) {
+			console.log(d);
+			var elm = document.getElementById("log");
+			elm.innerHTML = elm.innerHTML + d + "<br>";
+		}
+
+
+
+		function set_status(color, text) {
+			status_dot = document.getElementById('status-dot');
+			status_text = document.getElementById('status-text');
+
+			status_dot.style.color = color;
+			status_text.innerHTML = text;
+		}
+
+		class WS {
+			constructor(host=window.location.host) {
+				this.protocol = 'ws://';
+				if (location.protocol == 'https:') this.protocol = 'wss://';
+				this.host = host;
+			}
+
+			connect() {
+				log("Trying to connect");
+				set_status('yellow', 'Trying to connect')
+				this.socket = new WebSocket(this.protocol + this.host + '/ws');
+
+
+				this.socket.onmessage = function (e) {
+					console.log(e.data);
+					show_angle(parseInt(e.data));
+					/*let p = parse_msg(e.data);
+					let type = p.type;
+					let msg = p.msg;
+
+					if (type == 'ping-resp') {
+						log('ping response');
+						ping_response(msg['device']);
+					}
+					else {
+						var message = msg;
+						document.getElementById('chat-log').value += (message + '\n');
+					}*/
+				};
+
+				this.socket.onopen = function (e) {
+					log("WebSocket is open now.");
+					set_status(GREEN, 'WS active!');
+				};
+
+				this.socket.onclose = function (e) {
+					var that = this;
+					log('Chat socket closed unexpectedly');
+					set_status(RED, 'WS closed, reconnecting');
+
+					setTimeout(function () {
+						that.connect();
+					}, 1000);
+				}.bind(this);
+
+				this.socket.onerror = function (event) {
+					log("WebSocket error observed:" + event.type);
+					console.log(event);
+					set_status(RED, 'WS error: ' + event.type);
+				};
+			}
+		}
+
+
+		function create_msg(dtype, msg) {
+			return JSON.stringify({
+				't': dtype,
+				'm': msg,
+			})
+		}
+
+		function parse_msg(input) {
+			let j = JSON.parse(input);
+			let type = j['t'];
+			let msg = j['m'];
+
+			return {
+				type: type,
+				msg: msg,
+			};
+		}
+
+
+
+
+		if (!window.WebSocket) {
+			log("not supported :((");
+			alert("WS are not supported by your browser");
+		}
+
+		ws = new WS("192.168.0.115");
+		ws.connect();
+	</script>
+
+	<script>
+		function create_data(angle) {
+			return {
+				type: "barpolar",
+				//mode: "lines",
+				r: [0, 1],
+				theta: [0, angle],//-10, angle+10],
+				width: 10,
+				fill: "toself",
+				//fillcolor: color,
+				opacity: 0.7,
+				// line: {
+				// 	color: 'black'
+				// }
+			}
+		}
+		var data = [
+			{type: "barpolar"}
+			// create_data(-90),
+			// create_data(90),
+			// create_data(0),
+			// create_data(1),
+		]
+
+		margin = 40;
+		var layout = {
+			margin: {
+				l: margin,
+				r: margin,
+				b: margin,
+				t: margin,
+				pad: 10
+			},
+			polar: {
+				domain: {
+				},
+
+				radialaxis: {
+					visible: false,
+				},
+				angularaxis: {
+					//rotation: 90,
+					dtick: 10,
+					//direction: "counterclockwise"
+				},
+				sector: [0, 180],
+
+
+			},
+
+			showlegend: false
+
+		}
+
+
+
+		Plotly.newPlot('chart', data, layout, { staticPlot: true, responsive: true });
+
+		function getRndInteger(min, max) {
+			return Math.floor(Math.random() * (max - min)) + min;
+		}
+
+		let slots = {};
+
+		function export_and_redraw(){
+			new_data = [{type: "barpolar"}];
+			for(let key of Object.keys(slots)) new_data.push(create_data(key));
+			//console.log(new_data);
+			data.length = 0;
+			data.push.apply(data, new_data);
+			console.log(data);
+			Plotly.redraw('chart');
+		}
+
+		function show_angle(angle){
+			const time_to_hide = 2000;
+			if(slots.hasOwnProperty(angle)){
+				clearTimeout(slots[angle].timer);				
+			}
+			slots[angle] = {'timer': setTimeout(()=>{
+				delete slots[angle];
+				export_and_redraw();
+			}, time_to_hide)};
+			export_and_redraw();
+		}
+		// setInterval(()=>{
+		// 	show_angle(getRndInteger(-90, 90));
+		// }, 500);
+
+		show_angle(0);
+	</script>
+</body>
+
+</html>
