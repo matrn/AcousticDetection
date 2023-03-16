@@ -82,8 +82,9 @@
 			}
 
 			connect() {
-				log("Trying to connect");
-				this.socket = new WebSocket(this.protocol + this.host + '/ws');
+				let url = this.protocol + this.host + '/ws';
+				log("Trying to connect to " + url);
+				this.socket = new WebSocket(url);
 
 
 				this.socket.onmessage = function (e) {
@@ -200,11 +201,11 @@
 					visible: false,
 				},
 				angularaxis: {
-					rotation: 90,
+					rotation: -90,
 					dtick: 10,
 					//direction: "counterclockwise"
 				},
-				sector: [0, 180],
+				sector: [-180, 0],
 			},
 
 			showlegend: false
