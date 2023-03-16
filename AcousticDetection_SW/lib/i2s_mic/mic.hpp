@@ -43,10 +43,10 @@ class LRMics {
 	LRMics (
 		i2s_port_t i2s_port = I2S_NUM_0,
 		i2s_pin_config_t i2s_pins = i2s_pin_config_t{
-    		.bck_io_num = GPIO_NUM_32,   // BCK = Bit clock line = BCLK
-		    .ws_io_num = GPIO_NUM_33,   // WS (Word Select) = LRCL (Left-Right CLock)
+    		.bck_io_num = I2S_MIC_BCLK_PIN,   // BCK = Bit clock line = BCLK
+		    .ws_io_num = I2S_MIC_LRCL_PIN,   // WS (Word Select) = LRCL (Left-Right CLock)
     		.data_out_num = I2S_PIN_NO_CHANGE,
-    		.data_in_num = GPIO_NUM_35   // DOUT
+    		.data_in_num = I2S_MIC_DOUT_PIN   // DOUT
 		}
 		) : i2s_port(i2s_port), i2s_pins(i2s_pins) {
 		if (i2s_port != I2S_NUM_0 && i2s_port != I2S_NUM_1) return;
@@ -95,7 +95,9 @@ class LRMics {
 	
 	audio_sample_t parse_value(i2s_sample_t sample){
 		//Serial.print(sample);
-		sample = (sample & 0xFFFFFFF0) >> 11;
+		//sample = (sample & 0xFFFFFFF0) >> 11;
+		//sample = (sample >> 4) & 0b111111111111111111;
+		sample = sample >> 14;
 
 		audio_sample_t low = sample&0xFFFF;
 
@@ -122,7 +124,13 @@ class LRMics {
 
 		int samples_read = bytes_read/sizeof(i2s_sample_t);
 		for (int i = 0; i < samples_read; i ++) {
-			
+			// Serial.print(raw_samples_buffer[i++], BIN); Serial.print(", ");
+			// Serial.println(raw_samples_buffer[i], BIN); continue;
+			// audio_sample_t l = parse_value(raw_samples_buffer[i++]);
+			// audio_sample_t r = parse_value(raw_samples_buffer[i]);
+			// Serial.print(l, BIN); Serial.print(", ");
+			// Serial.println(r, BIN); continue;
+
 			// Serial.printf("[%d] = %d\n", i, raw_samples_buffer[i] & 0x0FFF); // Print with indexes
 			audio_sample_t left = parse_value(raw_samples_buffer[i++]);
 			audio_sample_t right = parse_value(raw_samples_buffer[i]);

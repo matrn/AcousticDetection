@@ -13,7 +13,7 @@
 
 // ----------SETTINGS----------
 const double sound_speed = 343;		 // [m/s]
-const double mics_distance = 0.145;	 // [m]  = distance between microphones in meters
+const double mics_distance = 0.186;	 // [m]  = distance between microphones in meters
 // ----------SETTINGS----------
 
 const double Ts = 1. / I2S_SAMPLE_RATE;	 // sample time
