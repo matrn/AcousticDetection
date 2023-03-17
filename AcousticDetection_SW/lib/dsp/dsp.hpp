@@ -7,18 +7,16 @@
 #include "../../include/types.hpp"
 #include "../../include/circular_buffer.hpp"
 #include "../i2s_mic/config.hpp"
+#include "config.hpp"
 // #include "../lib/i2s_mic/mic.hpp"
 
 
 
-// ----------SETTINGS----------
-const double sound_speed = 343;		 // [m/s]
-const double mics_distance = 0.186;	 // [m]  = distance between microphones in meters
-// ----------SETTINGS----------
+
 
 const double Ts = 1. / I2S_SAMPLE_RATE;	 // sample time
 
-const double travel_time_for_max_angle = mics_distance / sound_speed;	// how long does it take for sound wave to travel from one microphone to the other
+const double travel_time_for_max_angle = MICS_DISTANCE / SOUND_SPEED;	// how long does it take for sound wave to travel from one microphone to the other
 
 const double correlation_window_time = travel_time_for_max_angle * 50.0;					// 140% of maximum time difference between audio signals
 const int correlation_window_samples_num = 1024; //correlation_window_time / Ts + 0.5;	// how many samples should we take for cross correlation computation
@@ -163,7 +161,14 @@ class DSP {
 	// }
 
 	static double rad2deg(double rad_angle){
-		return rad_angle*(180./3.141);
+		return rad_angle*(180./PI);
+	}
+
+	static double calculate_angle(double tau){
+		/*
+			returns: angle in radians
+		*/
+		return acos((tau*SOUND_SPEED)/MICS_DISTANCE);
 	}
 };
 
