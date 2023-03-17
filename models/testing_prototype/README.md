@@ -3,3 +3,4 @@
 - ESP32's pin headers are blocked by 2 of 4 cylinders on the back side
 - cylinders holes for ESP32 are too big for the M3 screw without a threaded insert
 - hole for cables in the arms should be a little bit bigger
+- text is not readable - it should be higher and text bigger (size of the CTU logo is fine)
