@@ -1,7 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
 
 <head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	<script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
 	<style>
 		html,
 		body {
@@ -9,37 +13,60 @@
 			height: 100%;
 			margin: 0;
 		}
-
-		.border {
-			border: 1px solid black;
-		}
 	</style>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
 </head>
 
-<body>
-	<div id="log" style="display: none;">
+<body class="p-2">
+	<h2 class="text-center border border-dark rounded mb-2 p-2">Acoustic Detection</h2>
+	<div class="card mb-3">
+		<div class="card-header p-2">
+			<span class="float-start border border-dark rounded p-2">
+				WS:&nbsp;
+				<span id="status-dot">⬤</span>
+				<span id="status-text">WS not loaded</span>
+			</span>
 
-	</div>
+			<span class="float-start border border-dark ms-2 rounded p-2">
+				ping:&nbsp;
+				<span id="ping">-</span>
+			</span>
 
-	<div>
-		<span id="status-dot">⬤</span>
-		<span id="status-text">WS not loaded</span>
-	</div>
+			<span class="float-end border border-dark rounded p-2">
+				Angle:
+				<span id="angle">
+					-
+				</span>
+			</span>
+		</div>
 
-	<div class="border" style="width:100%; height: 90%;">
-		<canvas id="chart"></canvas>
+		<div class="card-body">
+			<div id="chart"></div>
+		</div>
 	</div>
+	
+	<div class="card mb-3">
+		<div class="card-header">
+			Logs			
+		</div>
+		<div class="card-body overflow-auto" id="log" style="height: 10rem">	 
+		</div>
+	</div>
+	
 
 
 	<script>
-		GREEN = '#88ff00';
-		RED = '#ff0000';
+		GREEN = '#28a745';
+		RED = '#dc3545';
+		YELLOW = '#ffc107';
 		BLACK = '#000';
 
 		function log(d) {
+			d = new Date().toLocaleTimeString() + ": " + d;
 			console.log(d);
 			var elm = document.getElementById("log");
 			elm.innerHTML = elm.innerHTML + d + "<br>";
+			elm.scrollTo(0, elm.scrollHeight);
 		}
 
 
@@ -57,38 +84,28 @@
 				this.protocol = 'ws://';
 				if (location.protocol == 'https:') this.protocol = 'wss://';
 				this.host = host;
+				this.url = this.protocol + this.host + '/ws';
 			}
 
 			connect() {
-				log("Trying to connect");
-				this.socket = new WebSocket(this.protocol + this.host + '/ws');
-
+				log("Trying to connect to " + this.url);
+				this.socket = new WebSocket(this.url);
 
 				this.socket.onmessage = function (e) {
 					console.log(e.data);
-					draw_result(parseInt(e.data));
-					/*let p = parse_msg(e.data);
-					let type = p.type;
-					let msg = p.msg;
-
-					if (type == 'ping-resp') {
-						log('ping response');
-						ping_response(msg['device']);
-					}
-					else {
-						var message = msg;
-						document.getElementById('chat-log').value += (message + '\n');
-					}*/
+					let angle = parseInt(e.data);
+					if(angle < 0 || angle > 180 || isNaN(angle)) log("ERROR: ANGLE out of range (0-180°) " + angle);
+					else show_angle(angle-90);
 				};
 
 				this.socket.onopen = function (e) {
-					log("WebSocket is open now.");
+					log("WS: open now.");
 					set_status(GREEN, 'WS active!');
 				};
 
 				this.socket.onclose = function (e) {
 					var that = this;
-					log('Chat socket closed unexpectedly');
+					log('WS: socket closed unexpectedly');
 					set_status(RED, 'WS closed, reconnecting');
 
 					setTimeout(function () {
@@ -97,166 +114,146 @@
 				}.bind(this);
 
 				this.socket.onerror = function (event) {
-					log("WebSocket error observed:" + event.type);
+					log("WS error observed: " + event.type);
 					console.log(event);
 					set_status(RED, 'WS error: ' + event.type);
 				};
 			}
 		}
-
-
-		function create_msg(dtype, msg) {
-			return JSON.stringify({
-				't': dtype,
-				'm': msg,
-			})
-		}
-
-		function parse_msg(input) {
-			let j = JSON.parse(input);
-			let type = j['t'];
-			let msg = j['m'];
-
-			return {
-				type: type,
-				msg: msg,
-			};
-		}
-
-
-
-
-		if (!window.WebSocket) {
-			log("not supported :((");
-			alert("WS are not supported by your browser");
-		}
-
-		ws = new WS("192.168.0.115");
-		ws.connect();
 	</script>
 
 	<script>
-		function rad2deg(radians) {
-			return radians * (180 / Math.PI);
+		if (!window.WebSocket) {
+			log("!WS not supported!");
+			alert("WS are not supported by your browser");
 		}
-
-		function deg2rad(degrees) {
-			return degrees * (Math.PI / 180);
+		else {
+			ws = new WS("192.168.0.115");
+			ws.connect();
+			set_status(YELLOW, 'WS: Trying to connect');
 		}
-		class Chart {
-			constructor(canvas) {
-				this.canvas = canvas;
-				this.ctx = this.canvas.getContext("2d");
+	</script>
 
-				this._recompute();
+	<script>
+		if (!!window.EventSource) {
+			let host = window.location.host;
+			host = "http://192.168.0.115";
+			console.log(host);
+			const sse = new EventSource(host + '/events');
 
-				//this.graph = [];
-			}
+			sse.addEventListener('open', function(e) {
+				console.log("Events Connected");
+			}, false);
 
-			_recompute() {
-				this.canvas.width = this.canvas.parentNode.offsetWidth;
-				this.canvas.height = this.canvas.parentNode.offsetHeight;
-
-				this.centerX = this.canvas.width / 2;
-				this.centerY = this.canvas.height / 2;
-
-				this.grid_line_width = 4;
-				this.grid_style = "#369";
-
-				this.seg_line_width = 2;
-				this.seg_style = "#000";
-
-				this.bg_color = "#fff";
-			}
-
-			_get_font() {
-				let sz = Math.min(this.canvas.width, this.canvas.height);
-				if (sz < 480) {
-					this.ctx.font = '10x verdana';
-				} else if (sz < 768) {
-					this.ctx.font = '20px verdana';
-				} else {
-					this.ctx.font = '40px verdana';
+			sse.addEventListener('error', function(e) {
+				if (e.target.readyState != EventSource.OPEN) {
+					console.log("Events Disconnected");
 				}
+			}, false);
+
+			sse.addEventListener('message', function(e) {
+				console.log("message", e.data);
+			}, false);
+
+			sse.addEventListener('angle', function(e) {
+				console.log("ANGLE", e.data);
+			}, false);
 			}
+	</script>
 
-			_draw_grid() {
-				this.ctx.beginPath();
+	<script>
+		const TIME_TO_HIDE_VALUE = 2000;
+		const BARPOLAR_WIDTH = 10;
 
-				let pad = 0.11 * Math.min(this.canvas.width, this.canvas.height);   //10% on every side
-				this.arc_radius = Math.min(this.canvas.width / 2, this.canvas.height) - pad;
-				let y_bottom = this.canvas.height / 2 + this.arc_radius / 2;
-
-				this.arc_center_X = this.centerX;
-				this.arc_center_Y = y_bottom;
-				this.ctx.arc(this.arc_center_X, this.arc_center_Y, this.arc_radius, 0, Math.PI, true);
-				this.ctx.lineWidth = this.grid_line_width;
-				this.ctx.strokeStyle = this.grid_style;
-
-				this.ctx.moveTo(this.arc_center_X - this.arc_radius - this.grid_line_width / 2, y_bottom);
-				this.ctx.lineTo(this.arc_center_X + this.arc_radius + this.grid_line_width / 2, y_bottom);
-
-
-				this._get_font();
-				this.ctx.textAlign = "center";
-
-				for (let a = 0; a <= 180; a += 45) {
-					let angle = deg2rad(a);
-					let lg = 1.02;
-					this.ctx.save();
-					this.ctx.translate(this.arc_center_X - this.arc_radius * lg * Math.cos(angle), this.arc_center_Y - this.arc_radius * lg * Math.sin(angle));
-					this.ctx.rotate(-Math.PI / 2 + angle);
-
-
-					this.ctx.fillText(a + '°', 0, 0);
-					this.ctx.restore();
-				}
-
-				this.ctx.stroke();
+		function create_data(angle) {
+			return {
+				// docs: https://plotly.com/javascript/reference/barpolar/#barpolar
+				type: "barpolar",
+				//mode: "lines",
+				r: [0, 1],
+				theta: [0, angle],//-10, angle+10],
+				width: BARPOLAR_WIDTH,
+				fill: "toself",
+				//fillcolor: color,
+				opacity: 0.7,
+				// line: {
+				// 	color: 'black'
+				// }
 			}
+		}
+		let data = [
+			{type: "barpolar"}   // to keep chart in polar type, without data and this line chart will be broken
+		]
 
-			draw_angle_line(angle_deg, clear = false) {
-				this.ctx.beginPath();
+		margin = 20;
+		let layout = {
+			margin: {
+				l: margin,
+				r: margin,
+				b: margin,
+				t: margin,
+				pad: 10
+			},
+			polar: {
+				// docs: https://plotly.com/javascript/reference/layout/polar/
+				radialaxis: {
+					visible: false,
+				},
+				angularaxis: {
+					rotation: -90,
+					dtick: 10,
+					//direction: "counterclockwise"
+				},
+				sector: [-180, 0],
+			},
 
-				let angle = deg2rad(angle_deg);
+			showlegend: false
 
-				this.ctx.lineWidth = this.seg_line_width + (clear ? 2 : 0);
-				if (clear) this.ctx.strokeStyle = this.bg_color;
-				else this.ctx.strokeStyle = this.seg_style;
+		};
 
-				let pad = this.arc_radius * 0.02;
-				this.ctx.moveTo(this.arc_center_X, this.arc_center_Y - pad);
-				this.ctx.lineTo(this.arc_center_X - (this.arc_radius - pad) * Math.cos(angle), this.arc_center_Y - (this.arc_radius - pad) * Math.sin(angle));
+		Plotly.newPlot('chart', data, layout, { staticPlot: true, responsive: true });
 
-				this.ctx.stroke();
-			}
-
-
-			draw() {
-				this._recompute();
-				this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-				this._draw_grid();
-			}
+		function getRndInteger(min, max) {
+			return Math.floor(Math.random() * (max - min)) + min;
 		}
 
 
+		let slots = {};
 
-		let chart = new Chart(document.getElementById("chart"));
-		chart.draw();
-		addEventListener('resize', () => {
-			console.log("resize");
-			chart.draw();
-		});
-
-		function draw_result(angle) {
-			chart.draw_angle_line(angle);
-			setTimeout(() => {
-				chart.draw_angle_line(angle, true);
-			}, 2000);
+		function export_and_redraw(){
+			new_data = [{type: "barpolar"}];      // type: "barpolar" is there to keep chart in polar type, without data and this line chart will be broken
+			
+			for(let key of Object.keys(slots)) new_data.push(create_data(key));
+			//console.log(new_data);
+			data.length = 0;
+			data.push.apply(data, new_data);
+			console.log(data);
+			Plotly.redraw('chart');
 		}
+		
+		let angle_elm = document.getElementById("angle");
+		function show_angle(angle){
+			if(angle < 0 || angle > 180 || isNaN(angle)) return;
+			
+			angle_elm.innerHTML = angle + "°";
+			setTimeout(()=>{
+				angle_elm.innerHTML = "-";
+			}, TIME_TO_HIDE_VALUE);
+			
+			if(slots.hasOwnProperty(angle)){
+				clearTimeout(slots[angle].timer);				
+			}
+			slots[angle] = {'timer': setTimeout(()=>{
+				delete slots[angle];
+				export_and_redraw();
+			}, TIME_TO_HIDE_VALUE)};
+			export_and_redraw();
+		}
+		// setInterval(()=>{
+		// 	show_angle(getRndInteger(-90, 90));
+		// }, 500);
 
-		//draw_result(30);
-		//draw_result(130);
+		show_angle(0);
 	</script>
 </body>
 
