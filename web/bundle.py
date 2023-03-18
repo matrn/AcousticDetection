@@ -3,7 +3,6 @@ import os
 import shutil
 #import rjsmin
 
-from io import StringIO  # Python 3.x
 import gzip
 
 
