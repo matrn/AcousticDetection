@@ -13,9 +13,9 @@
 #include "../lib/i2s_mic/mic.hpp"
 
 
-#define ENABLE_WS    // WebSockets
+//#define ENABLE_WS    // WebSockets
 #define ENABLE_SSE   // Server Sent Events
-
+#define ENABLE_SSE_CORS_HEADER
 
 // #define AUDIO_CAPTURE_SERVER_ENABLED
 
@@ -312,14 +312,16 @@ void setup() {
 	#endif
 
 	#ifdef ENABLE_SSE
-		DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+		#ifdef ENABLE_SSE_CORS_HEADER
+			DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+		#endif
 		events.onConnect([](AsyncEventSourceClient *client){
 			// if(client->lastId()){
 			// 	Serial.printf("Client reconnected! Last message ID that it gat is: %u\n", client->lastId());
 			// }
 			// //send event with message "hello!", id current millis
 			// // and set reconnect delay to 1 second
-			// client->send("hello!",NULL,millis(),1000);
+			client->send("hello!",NULL,millis(),1000);
 		});
 		server.addHandler(&events);
 	#endif
@@ -376,7 +378,9 @@ void setup() {
 }
 
 void loop() {
-	ws.cleanupClients();
+	#ifdef ENABLE_WS
+		ws.cleanupClients();
+	#endif
 	// vTaskDelay()
 
 	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED

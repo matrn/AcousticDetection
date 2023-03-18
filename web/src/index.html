@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<style>
+		html,
+		body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+		}
+	</style>
+	<link href="lib_bootstrap-5.3.0-alpha1.min.css" rel="stylesheet">
+</head>
+
+<body class="p-2">
+	<h2 class="text-center border border-dark rounded mb-2 p-2">Acoustic Detection</h2>
+	<div class="card mb-3">
+		<div class="card-header p-2">
+			<span class="float-start border border-dark rounded p-2">
+				SERVER:&nbsp;
+				<span id="status-dot">⬤</span>
+				<span id="status-text">Communication not loaded</span>
+			</span>
+
+			<!-- <span class="float-start border border-dark ms-2 rounded p-2">
+				ping:&nbsp;
+				<span id="ping">-</span>
+			</span> -->
+
+			<span class="float-end border border-dark rounded p-2">
+				Angle:
+				<span id="angle">
+					-
+				</span>
+			</span>
+		</div>
+
+		<div class="card-body">
+			<div id="chart"></div>
+		</div>
+	</div>
+
+	<div class="card mb-3">
+		<div class="card-header">
+			Logs
+		</div>
+		<div class="card-body overflow-auto" id="log" style="height: 10rem">
+		</div>
+	</div>
+
+	<!-- ##### Polar chart src ##### -->
+	<script src="lib_plotly-2.20.0.min.js"></script>
+	<script src="data_ui.js"></script>
+	<!-- ########################### -->
+
+	<!-- ##### Communication with the server ##### -->
+	<script src="ws.js"></script>
+	<script src="sse.js"></script>
+	<!-- ######################################### -->
+
+	<!-- ##### main ##### -->
+	<script>
+		class Log {
+			DEBUG = 'DEBUG';
+			INFO = 'INFO';
+			WARNING = 'WARNING';
+			ERROR = 'ERROR';
+
+			constructor(log_elm) {
+				this.log_elm = log_elm;
+			}
+
+			_log(d, level) {
+				d = level + ": " + new Date().toLocaleTimeString() + ": " + d;
+				console.log(d);
+
+				this.log_elm.innerHTML = this.log_elm.innerHTML + d + "<br>";
+				this.log_elm.scrollTo(0, this.log_elm.scrollHeight);
+			}
+
+			debug(d) {
+				this._log(d, this.DEBUG);
+			}
+			info(d) {
+				this._log(d, this.INFO);
+			}
+			warning(d) {
+				this._log(d, this.WARNING);
+			}
+			error(d) {
+				this._log(d, this.ERROR);
+			}
+		}
+		let log = new Log(document.getElementById("log"));
+
+		class Status {
+			GREEN = '#28a745';
+			RED = '#dc3545';
+			YELLOW = '#ffc107';
+			BLACK = '#000';
+
+			constructor(status_dot_elm, status_text_elm) {
+				this.status_dot = status_dot_elm;
+				this.status_text = status_text_elm;
+			}
+
+			set(color, text) {
+				//console.log("STATUS", color, text, this.status_dot, this.status_text);
+				this.status_dot.style.color = color;
+				this.status_text.innerHTML = text;
+			}
+		}
+		let status = new Status(document.getElementById('status-dot'), document.getElementById('status-text'));
+
+
+		let angle_elm = document.getElementById("angle");
+		function angle_value_callback(data) {
+			angle_elm.innerHTML = data;
+		}
+
+		let ui = new DataUI(angle_value_callback);
+		function angle_callback(angle_raw) {
+			let angle = parseInt(angle_raw);
+			if (angle < 0 || angle > 180 || isNaN(angle)) log.warning("ANGLE out of range (0-180°) " + angle);
+			ui.show_angle(angle - 90);
+		}
+
+
+		// ----- WS ----- //
+		// if (!window.WebSocket) {
+		// 	log.error("!WS not supported!");
+		// 	alert("WS are not supported by your browser");
+		// }
+		// else {
+		// 	let ws = new WS(angle_callback, log, status, "192.168.0.115");
+		// 	ws.connect();
+		// }
+		// -------------- //
+
+		// ----- SSE ----- //
+		if (!window.EventSource) {
+			log.error("!SSE not supported!");
+			alert("SSE are not supported by your browser");
+		}
+		else {
+			let sse = new SSE(angle_callback, log, status, "http://192.168.0.115");
+		}
+		// --------------- //
+	</script>
+	<!-- ################ -->
+</body>
+
+</html>
