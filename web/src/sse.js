@@ -1,9 +1,9 @@
-const SSE_RECREATION_TIMEOUT = 5000;
+const SSE_RECREATION_TIMEOUT = 8000;
 
 class SSE {
 	/* Server Sent Events */
 
-	constructor(angle_callback, log_obj, status_obj, host = window.location.host) {
+	constructor(angle_callback, log_obj, status_obj, host = "http://" + window.location.host) {
 		this.angle_callback = angle_callback;
 		this.log = log_obj;
 		this.status = status_obj;

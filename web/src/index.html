@@ -13,7 +13,7 @@
 			margin: 0;
 		}
 	</style>
-	<link href="lib_bootstrap-5.3.0-alpha1.min.css" rel="stylesheet">
+	<link href="lib_bootstrap-5.3.0.min.css" rel="stylesheet">
 </head>
 
 <body class="p-2">
@@ -147,7 +147,7 @@
 			alert("SSE are not supported by your browser");
 		}
 		else {
-			let sse = new SSE(angle_callback, log, status, "http://192.168.0.115");
+			let sse = new SSE(angle_callback, log, status); //, "http://192.168.0.115");
 		}
 		// --------------- //
 	</script>
