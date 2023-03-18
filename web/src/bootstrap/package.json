@@ -1,0 +1,13 @@
+{
+	"name": "PurgeCSS",
+	"version": "1.0.0",
+	"main": "index.js",
+	"license": "MIT",
+	"devDependencies": {
+		"webpack": "^4.29.0",
+		"purgecss": ""
+	},
+	"scripts": {
+		"build": "purgecss --css lib_bootstrap-5.3.0.min.css --content ../index.html --output ../"
+	}
+}
