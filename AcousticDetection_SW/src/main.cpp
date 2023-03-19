@@ -18,7 +18,9 @@
 #define ENABLE_SSE_CORS_HEADER
 
 #define ENABLE_WIFI_AP	// WIFI_STA otherwise
-//#define ENABLE_WIFI_AP_CAPTIVE_PORTAL
+//#define ENABLE_WIFI_AP_404_REDIRECT
+#define ENABLE_WIFI_AP_DNS
+// #define ENABLE_WIFI_AP_CAPTIVE_PORTAL   // not recommended
 
 #define ENABLE_OTA
 
@@ -374,7 +376,7 @@ void setup() {
 
 	// serverStatic supports gzip automatically
 	// for GMT date us bash command: LC_TIME=en_US.utf8 TZ=GMT date
-	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sun Mar 19 05:07:52 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
+	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sun Mar 19 10:50:46 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
 		#ifndef RELEASE
@@ -423,13 +425,17 @@ void setup() {
 		#endif
 
 		#ifdef ENABLE_WIFI_AP
-			if(request->getHeader("host")->value() != WiFi.softAPIP().toString()){
-				Serial.printf("Wrong host http://%s%s\n, redirecting\n", request->host().c_str(), request->url().c_str());
-				request->redirect("http://" + WiFi.softAPIP().toString());
-			}
-			else {
+			#ifdef ENABLE_WIFI_AP_404_REDIRECT
+				if(request->getHeader("host")->value() != WiFi.softAPIP().toString()){
+					Serial.printf("Wrong host http://%s%s\n, redirecting\n", request->host().c_str(), request->url().c_str());
+					request->redirect("http://" + WiFi.softAPIP().toString());
+				}
+				else {
+					request->send(404, "text/plain", "404 Not Found");
+				}
+			#else
 				request->send(404, "text/plain", "404 Not Found");
-			}
+			#endif
 		#else
 			request->send(404, "text/plain", "404 Not Found");
 		#endif
@@ -471,8 +477,10 @@ void setup() {
 	// 		Serial.printf("BodyEnd: %u\n", total);
 	// });
 	#ifdef ENABLE_WIFI_AP
-		dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-		dnsServer.start(53, "*", WiFi.softAPIP());   // redirect to ESP
+		#ifdef ENABLE_WIFI_AP_DNS
+			dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+			dnsServer.start(53, "*", WiFi.softAPIP());   // redirect to ESP
+		#endif
 		#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
 			server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);//only when requested from AP
 		#endif
@@ -532,7 +540,9 @@ void loop() {
 	#endif
 
 	#ifdef ENABLE_WIFI_AP
-		dnsServer.processNextRequest();
+		#ifdef ENABLE_WIFI_AP_DNS
+			dnsServer.processNextRequest();
+		#endif
 	#endif
 	// vTaskDelay()
 

@@ -36,6 +36,7 @@ class OnsetDetector {
 
    public:
 	bool detect(audio_sample_t value){
+		/* Rekurentní odhad okamžité střední hodnoty - CZS 12. přednáška, str. 6 */
 		sum = (p*abs(value) + (1-p)*sum)/2;
 		//Serial.println(sum);
 		return sum > OD_SUM_THRESHOLD;
