@@ -68,6 +68,8 @@ AsyncWebServer server(80);
 
 #ifdef ENABLE_SSE
 	AsyncEventSource events("/events");
+	#define SSE_SEND_ALIVE_MSG_TIME 8*1000   // 8 seconds
+	unsigned long last_sse_alive_msg_time = 0;
 #endif
 
 OnsetDetector od1;
@@ -86,6 +88,7 @@ void send_angle(int angle) {
 	#endif
 }
 
+#define LAST_CAPTURE_THRESHOLD 100   // 100ms
 
 void dsp_func(void *param) {
 	Serial.printf("DSP running on core: %d\n", xPortGetCoreID());
@@ -93,6 +96,8 @@ void dsp_func(void *param) {
 
 	int qq = 0;
 	bool capture_started = false;
+	unsigned long last_capture = 0;
+
 	while (true) {
 		// mics.read_and_print();
 		// continue;
@@ -149,7 +154,7 @@ void dsp_func(void *param) {
 			audio_sample_t left = sampler->data[i];
 			audio_sample_t right = sampler->data[++i];
 
-			if (od1.detect(left) && od2.detect(right) && capture_started == false) {
+			if (od1.detect(left) && od2.detect(right) && capture_started == false && millis() - last_capture > LAST_CAPTURE_THRESHOLD) {
 				Serial.println("Capture started");
 				capture_started = true;
 			}
@@ -165,6 +170,7 @@ void dsp_func(void *param) {
 				Serial.println("START PROCESSING");
 				qq = 0;
 				capture_started = false;
+				last_capture = millis();
 
 				std::pair<int, double> xcorr_peak;
 				bool xcorr_peak_found = dsp.xcorr_max<CircularBuffer<audio_sample_t, CORR_SIZE> >(x1, x2, xcorr_peak, CORR_SIZE, max_shift_samples_num + 1, true);
@@ -209,12 +215,21 @@ void dsp_func(void *param) {
 	}
 #endif
 
+
 void setup() {
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
 	Serial.begin(115200);
-	Serial.setDebugOutput(true);
+	#ifndef RELEASE
+		Serial.setDebugOutput(true);
+	#endif
 	Serial.println("ESP32 Acoustic Detection v0.1");
+	#ifdef RELEASE
+		Serial.println("--- RELEASE version ---");
+	#else
+		Serial.println("--- DEBUG version ---");
+	#endif
+
 	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
 	Serial.printf("setup running on core: %d\n", xPortGetCoreID());
 	mics.init();
@@ -429,6 +444,13 @@ void loop() {
 
 	#ifdef ENABLE_OTA
 		ArduinoOTA.handle();
+	#endif
+
+	#ifdef ENABLE_SSE
+		if(millis() - last_sse_alive_msg_time > SSE_SEND_ALIVE_MSG_TIME || millis() < last_sse_alive_msg_time){
+			last_sse_alive_msg_time = millis();
+			events.send(String(millis()).c_str(), "alive");
+		}
 	#endif
 
 	// vTaskDelay()
