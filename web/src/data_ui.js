@@ -72,7 +72,7 @@ class DataUI {
 		//console.log(new_data);
 		this.data.length = 0;
 		this.data.push.apply(this.data, new_data);
-		console.log(this.data);
+		//console.log(this.data);
 		Plotly.redraw('chart');
 	}
 

@@ -1,18 +1,35 @@
 const SSE_RECREATION_TIMEOUT = 8000;
+const SSE_ALIVE_THRESHOLD = 12000;   // 12 seconds
+
 
 class SSE {
 	/* Server Sent Events */
 
-	constructor(angle_callback, log_obj, status_obj, host = "http://" + window.location.host) {
+	constructor(angle_callback, log_obj, status_obj, alive_timer_obj, host = "http://" + window.location.host) {
 		this.angle_callback = angle_callback;
 		this.log = log_obj;
 		this.status = status_obj;
 
+		this.alive_timer = alive_timer_obj;
+		this.alive_timer.ALIVE_THRESHOLD = SSE_ALIVE_THRESHOLD;
+		this.alive_timer.expired_callback = function(){
+			this.log.debug("SSE alive timer expired!");
+			this._recreate_sse();
+		}.bind(this);
+
+		
 		this.host = host;
 		this.url = this.host + '/events';
 
 		this.was_connected = false;
 
+		this._create_sse();
+	}
+
+	_recreate_sse(){
+		this.log.debug("SSE recreation");
+		this.sse.close();
+		delete this.sse;
 		this._create_sse();
 	}
 
@@ -39,10 +56,7 @@ class SSE {
 					//console.log(this.was_connected);
 					//if (!this.was_connected) {
 					setTimeout(function () {
-						this.log.debug("SSE recreation");
-						this.sse.close();
-						delete this.sse;
-						this._create_sse();
+						this._recreate_sse();
 					}.bind(this), SSE_RECREATION_TIMEOUT);
 					//}
 				}
@@ -52,6 +66,12 @@ class SSE {
 				}
 			}
 		}.bind(this), false);
+		
+		this.sse.addEventListener('alive', function (e) {
+			this.log.debug("SSE ALIVE: " + e.data);
+			this.alive_timer.new_alive(new Date());
+		}.bind(this), false);
+
 
 		this.sse.addEventListener('message', function (e) {
 			this.log.debug("SSE message: " + e.data);
