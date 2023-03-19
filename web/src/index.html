@@ -29,13 +29,13 @@
 	<h2 class="text-center border border-dark rounded mb-2 p-2">Acoustic Detection</h2>
 	<div class="card mb-3" id="chart-card">
 		<div class="card-header p-2" id="chart-card-header">
-			<span class="float-start border border-dark rounded p-2">
+			<span class="float-start border border-dark rounded p-2 me-2">
 				SRV:&nbsp;
 				<span id="status-dot">⬤</span>
 				<span id="status-text">Communication not loaded</span>
 			</span>
 
-			<span class="float-start border border-dark ms-2 rounded p-2">
+			<span class="float-start border border-dark rounded p-2">
 				Alive:&nbsp;
 				<span id="alive">-</span>
 			</span>
@@ -62,7 +62,7 @@
 	</div>
 
 	<!-- ##### Polar chart src ##### -->
-	<script src="lib_plotly-2.20.0.min.js"></script>
+	<script src="lib_plotly-2.20.0-bp.min.js"></script>   <!-- tree shaked plotly.js version with only barpolar, see plotly_bundle/README.md -->
 	<script src="data_ui.js"></script>
 	<script src="chart_resize.js"></script>
 	<!-- ########################### -->

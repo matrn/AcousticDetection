@@ -22,4 +22,6 @@ echo ""
 #
 
 echo "########## !DONE! ##########"
+echo "dist/ size: $(du -sh dist/)"
+echo "############################"
 echo ""
