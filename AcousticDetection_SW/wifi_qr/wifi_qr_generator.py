@@ -19,17 +19,24 @@ def build_wifi_qr_data(ssid: str, password: str, enc_method: str = 'WPA', hidden
 	'''
 	return f'WIFI:S:{ssid};T:{enc_method};P:{password};H:{hidden};;'
 
+def build_url_data(url: str):
+	return f'urlto: {url}'
 
-qr = qrcode.QRCode(
-	box_size=150,
-	border=1,
-	#image_factory=qrcode.image.svg.SvgPathImage
-)
-qr.add_data(build_wifi_qr_data(AP_SSID, AP_PASS))
-qr.make(fit=True)
-img = qr.make_image(fill_color="black", back_color="white")
-type(img)  # qrcode.image.pil.PilImage
-img.save("qr.png")
+
+def qr_gen(filename: str, data: str):
+	qr = qrcode.QRCode(
+		box_size=150,
+		border=1,
+		#image_factory=qrcode.image.svg.SvgPathImage
+	)
+	qr.add_data(data)
+	qr.make(fit=True)
+	img = qr.make_image(fill_color="black", back_color="white")
+	type(img)  # qrcode.image.pil.PilImage
+	img.save(filename)
+
+qr_gen("wifi_qr.png", build_wifi_qr_data(AP_SSID, AP_PASS))
+qr_gen("url_qr.png", build_url_data("http://192.168.1.1/"))
 
 
 
@@ -42,13 +49,23 @@ QR_SIZE = (45*mm,)*2
 QR_SIZE_BIGGER = (60*mm,)*2
 QR_SIZE_BIGGER_2 = (80*mm,)*2
 
-dwg = svgwrite.Drawing('qr_pdf.svg',size=('210mm','297mm'))
-dwg.add(dwg.image('qr.png', insert=(2*cm, 2*cm), size=QR_SIZE))
-dwg.add(dwg.image('qr.png', insert=(8*cm, 2*cm), size=QR_SIZE))
-dwg.add(dwg.image('qr.png', insert=(14*cm, 2*cm), size=QR_SIZE_SMALL))
 
-dwg.add(dwg.image('qr.png', insert=(2*cm, 10*cm), size=QR_SIZE_BIGGER))
-dwg.add(dwg.image('qr.png', insert=(10*cm, 18*cm), size=QR_SIZE_BIGGER_2))
+dwg = svgwrite.Drawing('qr_pdf.svg',size=('210mm','297mm'))
+
+dwg.add(dwg.image('wifi_qr.png', insert=(2*cm, 2*cm), size=QR_SIZE))
+dwg.add(dwg.image('wifi_qr.png', insert=(8*cm, 2*cm), size=QR_SIZE))
+dwg.add(dwg.image('wifi_qr.png', insert=(14*cm, 2*cm), size=QR_SIZE_SMALL))
+
+dwg.add(dwg.image('wifi_qr.png', insert=(2*cm, 8*cm), size=QR_SIZE_BIGGER))
+# dwg.add(dwg.image('wifi_qr.png', insert=(10*cm, 8*cm), size=QR_SIZE_BIGGER_2))
+
+off = 14
+dwg.add(dwg.image('wifi_qr.png', insert=(2*cm, (off+2)*cm), size=QR_SIZE))
+dwg.add(dwg.image('wifi_qr.png', insert=(8*cm, (off+2)*cm), size=QR_SIZE))
+dwg.add(dwg.image('wifi_qr.png', insert=(14*cm, (off+2)*cm), size=QR_SIZE_SMALL))
+
+dwg.add(dwg.image('wifi_qr.png', insert=(2*cm, (off+8)*cm), size=QR_SIZE_BIGGER))
+# dwg.add(dwg.image('wifi_qr.png', insert=(10*cm, (off+8)*cm), size=QR_SIZE_BIGGER_2))
 
 # dwg.add(dwg.line((2*cm, 2*cm), (10*cm, 2*cm), stroke=svgwrite.rgb(10, 10, 16, '%')))
 dwg.save()
