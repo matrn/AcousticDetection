@@ -56,6 +56,10 @@ class SSE {
 		this.sse.addEventListener('message', function (e) {
 			this.log.debug("SSE message: " + e.data);
 		}.bind(this), false);
+		
+		this.sse.addEventListener('ota', function (e) {
+			this.log.debug("SSE OTA: " + e.data);
+		}.bind(this), false);
 
 		this.sse.addEventListener('angle', function (e) {
 			this.log.debug("SSE ANGLE data: " + e.data);

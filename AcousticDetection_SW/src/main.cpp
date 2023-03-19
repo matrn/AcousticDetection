@@ -13,11 +13,21 @@
 #include "../lib/i2s_mic/mic.hpp"
 
 
-//#define ENABLE_WS    // WebSockets
-#define ENABLE_SSE   // Server Sent Events
+// #define ENABLE_WS    // WebSockets
+#define ENABLE_SSE	// Server Sent Events
 #define ENABLE_SSE_CORS_HEADER
 
+// #define ENABLE_WIFI_AP	// WIFI_STA otherwise
+#define ENABLE_OTA
+
 // #define AUDIO_CAPTURE_SERVER_ENABLED
+
+
+
+#ifdef ENABLE_OTA
+	#include <ArduinoOTA.h>
+#endif
+
 
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
 	#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:5005/i2s_samples"  //"http://192.168.26.92:5005/i2s_samples"
@@ -64,7 +74,7 @@ OnsetDetector od1;
 OnsetDetector od2;
 
 
-void send_angle(int angle){
+void send_angle(int angle) {
 	char str[10];
 	sprintf(str, "%d", angle);
 	#ifdef ENABLE_WS
@@ -168,7 +178,7 @@ void dsp_func(void *param) {
 						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", xcorr_peak.first, xcorr_peak.second, tau);
 					else {
 						int angle = dsp.rad2deg(dsp.calculate_angle(tau)) + 0.5;
-						
+
 						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d\n", xcorr_peak.first, xcorr_peak.second, tau, angle);
 
 						send_angle(angle);
@@ -199,13 +209,12 @@ void dsp_func(void *param) {
 	}
 #endif
 
-
 void setup() {
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
 	Serial.begin(115200);
 	Serial.setDebugOutput(true);
-	Serial.println("ESP32 Acoustic Detection");
+	Serial.println("ESP32 Acoustic Detection v0.1");
 	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
 	Serial.printf("setup running on core: %d\n", xPortGetCoreID());
 	mics.init();
@@ -231,6 +240,9 @@ void setup() {
 	// while(1);
 	/* Core where the task should run */
 
+#ifdef ENABLE_WIFI_AP
+	WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
+#else
 	Serial.printf("Connecting to: %s\n", wifi_ssid);
 	WiFi.mode(WIFI_STA);
 	WiFi.begin(wifi_ssid, wifi_password);
@@ -247,17 +259,50 @@ void setup() {
 	Serial.printf("Connected, ip: %s\n", WiFi.localIP().toString().c_str());
 
 	MDNS.addService("http", "tcp", 80);
+#endif
+
+#ifdef ENABLE_OTA
+	// Send OTA events to the browser
+	ArduinoOTA.onStart([]() { events.send("Update Start", "ota"); });
+	ArduinoOTA.onEnd([]() { events.send("Update End", "ota"); });
+	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+		char p[32];
+		sprintf(p, "Progress: %u%%\n", (progress / (total / 100)));
+		events.send(p, "ota");
+	});
+	ArduinoOTA.onError([](ota_error_t error) {
+		if (error == OTA_AUTH_ERROR)
+			events.send("Auth Failed", "ota");
+		else if (error == OTA_BEGIN_ERROR)
+			events.send("Begin Failed", "ota");
+		else if (error == OTA_CONNECT_ERROR)
+			events.send("Connect Failed", "ota");
+		else if (error == OTA_RECEIVE_ERROR)
+			events.send("Recieve Failed", "ota");
+		else if (error == OTA_END_ERROR)
+			events.send("End Failed", "ota");
+	});
+	// Port defaults to 3232
+	//ArduinoOTA.setPort(ota_port);
+
+	// Hostname defaults to esp3232-[MAC]
+	ArduinoOTA.setHostname(hostname);
+
+	// No authentication by default
+	ArduinoOTA.setPassword(ota_password);
+
+	ArduinoOTA.begin();
+#endif
 
 	SPIFFS.begin();
-	
-	
-
 
 	server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request) {
 		request->send(200, "text/plain", String(ESP.getFreeHeap()));
 	});
 
-	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+	// serverStatic supports gzip automatically
+	// for GMT date us bash command: LC_TIME=en_US.utf8 TZ=GMT date
+	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sat Mar 18 09:37:01 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
 		Serial.printf("NOT_FOUND: ");
@@ -315,13 +360,13 @@ void setup() {
 		#ifdef ENABLE_SSE_CORS_HEADER
 			DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
 		#endif
-		events.onConnect([](AsyncEventSourceClient *client){
+		events.onConnect([](AsyncEventSourceClient *client) {
 			// if(client->lastId()){
 			// 	Serial.printf("Client reconnected! Last message ID that it gat is: %u\n", client->lastId());
 			// }
 			// //send event with message "hello!", id current millis
 			// // and set reconnect delay to 1 second
-			client->send("hello!",NULL,millis(),1000);
+			client->send("hello!", NULL, millis(), 1000);
 		});
 		server.addHandler(&events);
 	#endif
@@ -381,6 +426,11 @@ void loop() {
 	#ifdef ENABLE_WS
 		ws.cleanupClients();
 	#endif
+
+	#ifdef ENABLE_OTA
+		ArduinoOTA.handle();
+	#endif
+
 	// vTaskDelay()
 
 	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
