@@ -1,14 +1,14 @@
 const TIME_TO_HIDE_VALUE = 2000;
-const BARPOLAR_WIDTH = 10;
+const BARPOLAR_WIDTH = 8;
 
-const margin = 20;
+const margin_sides = 30;
 const plot_layout = {
 	margin: {
-		l: margin,
-		r: margin,
-		b: margin,
-		t: margin,
-		pad: 10
+		l: margin_sides,
+		r: margin_sides,
+		b: 30,
+		t: 20,
+		//pad: 10
 	},
 	polar: {
 		// docs: https://plotly.com/javascript/reference/layout/polar/
@@ -40,6 +40,7 @@ class DataUI {
 		this.data = [
 			{ type: "barpolar" }   // to keep chart in polar type, without data and this line chart will be broken
 		];
+		//plot_layout.autosize = true;
 
 		Plotly.newPlot('chart', this.data, plot_layout, { staticPlot: true, responsive: true });
 

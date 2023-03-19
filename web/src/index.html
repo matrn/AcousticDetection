@@ -12,16 +12,25 @@
 			height: 100%;
 			margin: 0;
 		}
+		
+		@media screen and (orientation: landscape) {
+			#chart-card {
+				max-height: 95vh;
+			}
+		}
+		@media screen and (orientation: portrait) {
+		}
+
 	</style>
 	<link href="lib_bootstrap-5.3.0.min.css" rel="stylesheet">
 </head>
 
 <body class="p-2">
 	<h2 class="text-center border border-dark rounded mb-2 p-2">Acoustic Detection</h2>
-	<div class="card mb-3">
-		<div class="card-header p-2">
+	<div class="card mb-3" id="chart-card">
+		<div class="card-header p-2" id="chart-card-header">
 			<span class="float-start border border-dark rounded p-2">
-				SERVER:&nbsp;
+				SRV:&nbsp;
 				<span id="status-dot">⬤</span>
 				<span id="status-text">Communication not loaded</span>
 			</span>
@@ -39,8 +48,8 @@
 			</span>
 		</div>
 
-		<div class="card-body">
-			<div id="chart"></div>
+		<div class="card-body container-fluid" id="chart-card-body" style="height: inherit;">
+			<div id="chart" ></div>
 		</div>
 	</div>
 
@@ -55,6 +64,7 @@
 	<!-- ##### Polar chart src ##### -->
 	<script src="lib_plotly-2.20.0.min.js"></script>
 	<script src="data_ui.js"></script>
+	<script src="chart_resize.js"></script>
 	<!-- ########################### -->
 
 	<!-- ##### Communication with the server ##### -->
@@ -99,7 +109,8 @@
 			alert("SSE are not supported by your browser");
 		}
 		else {
-			let sse = new SSE(angle_callback, log, status, alive_timer); // "http://192.168.0.115");
+			let host = window.location.protocol == "file:" ? "http://192.168.0.115" : undefined;
+			let sse = new SSE(angle_callback, log, status, alive_timer, host);
 		}
 		// --------------- //
 	</script>

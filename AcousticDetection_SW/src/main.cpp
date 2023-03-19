@@ -88,6 +88,11 @@ void send_angle(int angle) {
 	#endif
 }
 
+void sse_send_alive_msg(){
+	events.send(String(millis()).c_str(), "alive");
+}
+
+
 #define LAST_CAPTURE_THRESHOLD 100   // 100ms
 
 void dsp_func(void *param) {
@@ -281,21 +286,25 @@ void setup() {
 	ArduinoOTA.onStart([]() { events.send("Update Start", "ota"); });
 	ArduinoOTA.onEnd([]() { events.send("Update End", "ota"); });
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-		char p[32];
-		sprintf(p, "Progress: %u%%\n", (progress / (total / 100)));
-		events.send(p, "ota");
+		#ifdef ENABLE_SSE
+			char p[32];
+			sprintf(p, "Progress: %u%%\n", (progress / (total / 100)));
+			events.send(p, "ota");
+		#endif
 	});
 	ArduinoOTA.onError([](ota_error_t error) {
-		if (error == OTA_AUTH_ERROR)
-			events.send("Auth Failed", "ota");
-		else if (error == OTA_BEGIN_ERROR)
-			events.send("Begin Failed", "ota");
-		else if (error == OTA_CONNECT_ERROR)
-			events.send("Connect Failed", "ota");
-		else if (error == OTA_RECEIVE_ERROR)
-			events.send("Recieve Failed", "ota");
-		else if (error == OTA_END_ERROR)
-			events.send("End Failed", "ota");
+		#ifdef ENABLE_SSE
+			if (error == OTA_AUTH_ERROR)
+				events.send("Auth Failed", "ota");
+			else if (error == OTA_BEGIN_ERROR)
+				events.send("Begin Failed", "ota");
+			else if (error == OTA_CONNECT_ERROR)
+				events.send("Connect Failed", "ota");
+			else if (error == OTA_RECEIVE_ERROR)
+				events.send("Recieve Failed", "ota");
+			else if (error == OTA_END_ERROR)
+				events.send("End Failed", "ota");
+		#endif
 	});
 	// Port defaults to 3232
 	//ArduinoOTA.setPort(ota_port);
@@ -317,7 +326,7 @@ void setup() {
 
 	// serverStatic supports gzip automatically
 	// for GMT date us bash command: LC_TIME=en_US.utf8 TZ=GMT date
-	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sat Mar 18 09:37:01 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
+	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sun Mar 19 05:07:52 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
 		Serial.printf("NOT_FOUND: ");
@@ -381,7 +390,8 @@ void setup() {
 			// }
 			// //send event with message "hello!", id current millis
 			// // and set reconnect delay to 1 second
-			client->send("hello!", NULL, millis(), 1000);
+			//client->send("hello!", NULL, millis(), 1000);
+			sse_send_alive_msg();
 		});
 		server.addHandler(&events);
 	#endif
@@ -449,7 +459,7 @@ void loop() {
 	#ifdef ENABLE_SSE
 		if(millis() - last_sse_alive_msg_time > SSE_SEND_ALIVE_MSG_TIME || millis() < last_sse_alive_msg_time){
 			last_sse_alive_msg_time = millis();
-			events.send(String(millis()).c_str(), "alive");
+			sse_send_alive_msg();
 		}
 	#endif
 
