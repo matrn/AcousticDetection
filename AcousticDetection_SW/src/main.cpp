@@ -12,16 +12,54 @@
 #include "../lib/dsp/dsp.hpp"
 #include "../lib/i2s_mic/mic.hpp"
 
-
+// ---------- SETTINGS ---------- //
 // #define ENABLE_WS    // WebSockets
 #define ENABLE_SSE	// Server Sent Events
 #define ENABLE_SSE_CORS_HEADER
 
-// #define ENABLE_WIFI_AP	// WIFI_STA otherwise
+#define ENABLE_WIFI_AP	// WIFI_STA otherwise
+//#define ENABLE_WIFI_AP_CAPTIVE_PORTAL
+
 #define ENABLE_OTA
 
 // #define AUDIO_CAPTURE_SERVER_ENABLED
+// ------------------------------ //
 
+
+#ifdef ENABLE_WIFI_AP
+	#include <DNSServer.h>
+	DNSServer dnsServer;
+	const IPAddress AP_local_ip(192,168,1,1);
+	const IPAddress AP_gateway(192,168,1,1);
+	const IPAddress AP_subnet(255,255,255,0);
+
+	#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
+		class CaptiveRequestHandler : public AsyncWebHandler {
+			public:
+			CaptiveRequestHandler() {}
+			virtual ~CaptiveRequestHandler() {}
+
+			bool canHandle(AsyncWebServerRequest *request){
+				//request->addInterestingHeader("ANY");
+				return true;
+			}
+
+			void handleRequest(AsyncWebServerRequest *request) {
+				// AsyncResponseStream *response = request->beginResponseStream("text/html");
+				// response->print("<!DOCTYPE html><html><head><title>Captive Portal</title></head><body>");
+				// response->print("<p>This is out captive portal front page.</p>");
+				// response->printf("<p>You were trying to reach: http://%s%s</p>", request->host().c_str(), request->url().c_str());
+				// response->printf("<p>Try opening <a href='http://%s'>this link</a> instead</p>", WiFi.softAPIP().toString().c_str());
+				// response->print("</body></html>");
+				// request->send(response);
+				Serial.printf("Client was trying to reach: http://%s%s\n", request->host().c_str(), request->url().c_str());
+				AsyncWebServerResponse *response = request->beginResponse(302);
+				response->addHeader("Location", "http://" + WiFi.softAPIP().toString());
+				return request->send(response);
+			}
+		};
+	#endif
+#endif
 
 
 #ifdef ENABLE_OTA
@@ -228,12 +266,16 @@ void setup() {
 	#ifndef RELEASE
 		Serial.setDebugOutput(true);
 	#endif
-	Serial.println("ESP32 Acoustic Detection v0.1");
+	Serial.print(F("START, file: " __FILE__ " built on " __DATE__ " " __TIME__));
 	#ifdef RELEASE
-		Serial.println("--- RELEASE version ---");
+		Serial.println(" - RELEASE version");
 	#else
-		Serial.println("--- DEBUG version ---");
+		Serial.println(" - DEBUG version");
 	#endif
+	Serial.println("-----------------------------");
+	Serial.println("ESP32 Acoustic Detection v0.3");
+	Serial.println("-----------------------------");
+	
 
 	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
 	Serial.printf("setup running on core: %d\n", xPortGetCoreID());
@@ -261,8 +303,13 @@ void setup() {
 	/* Core where the task should run */
 
 #ifdef ENABLE_WIFI_AP
-	WiFi.softAP(wifi_ap_ssid, wifi_ap_pass);
+	// docs: https://espressif-docs.readthedocs-hosted.com/projects/arduino-esp32/en/latest/api/wifi.html
+	Serial.println("---------- AP mode ----------");
+	Serial.println(String("AP creation: ") + (WiFi.softAP(wifi_ap_ssid, wifi_ap_pass)?"true":"false"));
+	Serial.println(String("AP config: ") + (WiFi.softAPConfig(AP_local_ip, AP_gateway, AP_subnet)?"true":"false"));
+	Serial.println("-----------------------------");
 #else
+	Serial.println("---------- STA mode ----------");
 	Serial.printf("Connecting to: %s\n", wifi_ssid);
 	WiFi.mode(WIFI_STA);
 	WiFi.begin(wifi_ssid, wifi_password);
@@ -279,6 +326,7 @@ void setup() {
 	Serial.printf("Connected, ip: %s\n", WiFi.localIP().toString().c_str());
 
 	MDNS.addService("http", "tcp", 80);
+	Serial.println("------------------------------");
 #endif
 
 #ifdef ENABLE_OTA
@@ -329,6 +377,7 @@ void setup() {
 	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sun Mar 19 05:07:52 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
+		#ifndef RELEASE
 		Serial.printf("NOT_FOUND: ");
 		if (request->method() == HTTP_GET)
 			Serial.printf("GET");
@@ -371,8 +420,19 @@ void setup() {
 				Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
 			}
 		}
+		#endif
 
-		request->send(404);
+		#ifdef ENABLE_WIFI_AP
+			if(request->getHeader("host")->value() != WiFi.softAPIP().toString()){
+				Serial.printf("Wrong host http://%s%s\n, redirecting\n", request->host().c_str(), request->url().c_str());
+				request->redirect("http://" + WiFi.softAPIP().toString());
+			}
+			else {
+				request->send(404, "text/plain", "404 Not Found");
+			}
+		#else
+			request->send(404, "text/plain", "404 Not Found");
+		#endif
 	});
 
 	#ifdef ENABLE_WS
@@ -410,6 +470,14 @@ void setup() {
 	// 	if (index + len == total)
 	// 		Serial.printf("BodyEnd: %u\n", total);
 	// });
+	#ifdef ENABLE_WIFI_AP
+		dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+		dnsServer.start(53, "*", WiFi.softAPIP());   // redirect to ESP
+		#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
+			server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);//only when requested from AP
+		#endif
+	#endif
+
 	server.begin();
 
 	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
@@ -463,6 +531,9 @@ void loop() {
 		}
 	#endif
 
+	#ifdef ENABLE_WIFI_AP
+		dnsServer.processNextRequest();
+	#endif
 	// vTaskDelay()
 
 	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
