@@ -36,12 +36,11 @@ print("Current Build targets", BUILD_TARGETS)
 
 
 def before_buildfs(source, target, env):
+	env.Execute("$PYTHONEXE -m pip install jsmin")   # docs: https://docs.platformio.org/en/stable/scripting/examples/extra_python_packages.html
 	print(source, target, env)
 	print("Before build fs")
 	subprocess.run(['bash', '../web/bundle_all.sh'], stderr=sys.stderr, stdout=sys.stdout)
 
-
-env.Execute("$PYTHONEXE -m pip install jsmin")   # docs: https://docs.platformio.org/en/stable/scripting/examples/extra_python_packages.html
 
 # docs: https://docs.platformio.org/en/latest/scripting/actions.html
 # issue with buildfs: https://github.com/platformio/platformio-core/issues/3842
@@ -51,46 +50,20 @@ env.AddPreAction("$BUILD_DIR/spiffs.bin", before_buildfs)
 
 ######### CONFIG parser #########
 
-try:
-	import re
-except:
-	env.Execute("$PYTHONEXE -m pip install regex")
-	import re
-
-
-CPP_CONFIG = 'include/config.hpp'
-
-config = {}
-
-with open(CPP_CONFIG, 'r') as f:
-	for line in f.readlines():
-		data_re = re.search(r'"(.*?)"', line)
-		if data_re:
-			if line.startswith('//'): continue   # ignore comments
-
-			var_name = None
-			var_data = data_re.group().replace('"', '')
-
-			if "#define" in line:
-				var_name = re.search(r'\s[A-Za-z_]*\s', line).group().replace(' ', '')
-			else:
-				var_name = re.search(r'\s[A-Za-z_]*.?=', line).group().replace(' ', '').replace('=', '')
-
-			config[var_name] = var_data
-
+from config_parser import parse_config
+config = parse_config()
 print(config)
 
 
-OTA_PORT = int(config.get('ota_port', 3232))
-OTA_IP = config.get('ota_ip', f'{config.get("hostname")}.local')
-OTA_PASSWORD = config.get('ota_password')
-print(OTA_PORT, OTA_IP, OTA_PASSWORD)
+if env.get('UPLOAD_PROTOCOL', None) == 'espota':
+	OTA_PORT = int(config.get('ota_port', 3232))
+	OTA_IP = config.get('ota_ip', f'{config.get("hostname")}.local')
+	OTA_PASSWORD = config.get('ota_password')
+	print(OTA_PORT, OTA_IP, OTA_PASSWORD)
+			
+	env['UPLOAD_PROTOCOL'] = "espota"
+	env['UPLOAD_PORT'] = OTA_IP
+	env['UPLOAD_FLAGS'] = [f'--port={OTA_PORT}', f'--auth={OTA_PASSWORD}']
 
-
-env.Replace(
-	UPLOAD_PROTOCOL="espota",
-	UPLOAD_PORT=OTA_IP,
-	UPLOAD_FLAGS=[f'--port={OTA_PORT}', f'--auth={OTA_PASSWORD}'],
-)
 
 #env.Append(CPPDEFINES=[("OTA_PASSWORD", "\\\"" + OTA_PASSWORD + "\\\"")])
