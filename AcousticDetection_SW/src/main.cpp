@@ -18,8 +18,8 @@
 #define ENABLE_SSE_CORS_HEADER
 
 #define ENABLE_WIFI_AP	// WIFI_STA otherwise
-//#define ENABLE_WIFI_AP_404_REDIRECT
-#define ENABLE_WIFI_AP_DNS
+// #define ENABLE_WIFI_AP_404_REDIRECT
+// #define ENABLE_WIFI_AP_DNS
 // #define ENABLE_WIFI_AP_CAPTIVE_PORTAL   // not recommended
 
 #define ENABLE_OTA
@@ -307,7 +307,7 @@ void setup() {
 #ifdef ENABLE_WIFI_AP
 	// docs: https://espressif-docs.readthedocs-hosted.com/projects/arduino-esp32/en/latest/api/wifi.html
 	Serial.println("---------- AP mode ----------");
-	Serial.println(String("AP creation: ") + (WiFi.softAP(wifi_ap_ssid, wifi_ap_pass)?"true":"false"));
+	Serial.println(String("AP creation: ") + (WiFi.softAP(wifi_ap_ssid, wifi_ap_pass, 6, 0, 4)?"true":"false"));
 	Serial.println(String("AP config: ") + (WiFi.softAPConfig(AP_local_ip, AP_gateway, AP_subnet)?"true":"false"));
 	Serial.println("-----------------------------");
 #else
