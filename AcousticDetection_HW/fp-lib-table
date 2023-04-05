@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "SPH0645LM4H-B")(type "KiCad")(uri "${KIPRJMOD}/lib/SPH0645LM4H-B")(options "")(descr ""))
+)
