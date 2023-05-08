@@ -3567,12 +3567,12 @@
   )
 
   (symbol (lib_id "Device:R") (at 176.53 144.145 180) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
+    (in_bom yes) (on_board yes) (dnp no)
     (uuid cc93ee39-0a65-4716-8fc4-1ad4c808442e)
     (property "Reference" "R3" (at 179.07 143.51 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
-    (property "Value" "1k" (at 179.07 146.05 0)
+    (property "Value" "220R" (at 179.07 146.05 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
     (property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder" (at 178.308 144.145 90)
@@ -3587,8 +3587,8 @@
     (property "Shop" "https://www.tme.eu/cz/details/erjhp6f1001v/rezistory-smd/panasonic/" (at 176.53 144.145 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid bef176a0-377c-415e-8107-d55ae1caf688))
-    (pin "2" (uuid 6f0b9a22-b32f-41cc-b169-fd3cbc18862a))
+    (pin "1" (uuid ee57060b-9535-4354-9269-0b3fdaa0fb45))
+    (pin "2" (uuid 71eba573-25b4-4018-94dc-f4a14eb8a641))
     (instances
       (project "AcousticDetection_HW"
         (path "/a4f6f748-2215-4620-b8dc-9fea49229682"
@@ -3860,7 +3860,7 @@
     (property "Reference" "R4" (at 198.12 143.51 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
-    (property "Value" "1k" (at 198.12 146.05 0)
+    (property "Value" "220R" (at 198.12 146.05 0)
       (effects (font (size 1.27 1.27)) (justify right))
     )
     (property "Footprint" "Resistor_SMD:R_0805_2012Metric_Pad1.20x1.40mm_HandSolder" (at 197.358 144.145 90)
