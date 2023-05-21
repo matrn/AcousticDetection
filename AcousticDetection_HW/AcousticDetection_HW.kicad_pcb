@@ -5,6 +5,12 @@
   )
 
   (paper "A4")
+  (title_block
+    (title "Acoustic Detection")
+    (date "2023-04-10")
+    (company "Matěj Trnka, CTU FEL, Department of Measurement")
+  )
+
   (layers
     (0 "F.Cu" signal)
     (31 "B.Cu" signal)
