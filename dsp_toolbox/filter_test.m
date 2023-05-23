@@ -83,14 +83,15 @@ xlabel('k [-]');
 ylabel('R[k]');
 xlim([-1024,1024]);
 
+%{
 nexttile;
 plot(lag, abs(Rk_none));
 title("none xcorr");
 xlabel('k [-]');
 ylabel('R[k]');
 xlim([-1024,1024]);
+%}
 
-%{
 nexttile;
 [tau_est,R,lags] = gccphat(left, right); %, fs);
 plot(lags, R);
@@ -99,7 +100,7 @@ xlabel('k [-]');
 ylabel('R[k]');
 xlim([-1024,1024]);
 disp(tau_est);
-%}
+
 
 %%
 left = left/max(abs(left));
