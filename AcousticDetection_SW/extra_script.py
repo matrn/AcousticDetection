@@ -42,28 +42,32 @@ def before_buildfs(source, target, env):
 	subprocess.run(['bash', '../web/bundle_all.sh'], stderr=sys.stderr, stdout=sys.stdout)
 
 
-# docs: https://docs.platformio.org/en/latest/scripting/actions.html
-# issue with buildfs: https://github.com/platformio/platformio-core/issues/3842
-env.AddPreAction("$BUILD_DIR/spiffs.bin", before_buildfs)
-
 
 
 ######### CONFIG parser #########
-
 from config_parser import parse_config
-config = parse_config()
-print(config)
 
 
-if env.get('UPLOAD_PROTOCOL', None) == 'espota':
-	OTA_PORT = int(config.get('ota_port', 3232))
-	OTA_IP = config.get('ota_ip', f'{config.get("hostname")}.local')
-	OTA_PASSWORD = config.get('ota_password')
-	print(OTA_PORT, OTA_IP, OTA_PASSWORD)
-			
-	env['UPLOAD_PROTOCOL'] = "espota"
-	env['UPLOAD_PORT'] = OTA_IP
-	env['UPLOAD_FLAGS'] = [f'--port={OTA_PORT}', f'--auth={OTA_PASSWORD}']
+def before_upload(source, target, env):
+	print(">> BEFORE UPLOAD")
+	config = parse_config()
+	print(config)
+	if env.get('UPLOAD_PROTOCOL', None) == 'espota':
+		OTA_PORT = int(config.get('ota_port', 3232))
+		OTA_IP = config.get('ota_ip', f'{config.get("hostname")}.local')
+		OTA_PASSWORD = config.get('ota_password')
+		print(OTA_PORT, OTA_IP, OTA_PASSWORD)
+				
+		env['UPLOAD_PROTOCOL'] = "espota"
+		env['UPLOAD_PORT'] = OTA_IP
+		env['UPLOAD_FLAGS'] = [f'--port={OTA_PORT}', f'--auth={OTA_PASSWORD}']
 
 
 #env.Append(CPPDEFINES=[("OTA_PASSWORD", "\\\"" + OTA_PASSWORD + "\\\"")])
+
+
+# docs: https://docs.platformio.org/en/latest/scripting/actions.html
+# issue with buildfs: https://github.com/platformio/platformio-core/issues/3842
+env.AddPreAction("$BUILD_DIR/spiffs.bin", before_buildfs)
+# env.AddPreAction("upload", before_upload)
+before_upload(None, None, env)
