@@ -117,9 +117,13 @@ OnsetDetector od1;
 OnsetDetector od2;
 
 
-void send_angle(int angle) {
-	char str[10];
-	sprintf(str, "%d", angle);
+void send_angle(int angle, int error) {
+	/*
+		@angle - angle in range [0, 180]
+		@error - uncertainty of angle in range [0, 10] - on web, width will be width=2*error
+	*/
+	char str[12];
+	sprintf(str, "%d;%d", angle, error);
 	#ifdef ENABLE_WS
 		ws.textAll(str);
 	#endif
@@ -224,16 +228,19 @@ void dsp_func(void *param) {
 				Serial.println(xcorr_peak_found);
 				if (xcorr_peak_found) {
 					digitalWrite(LED_BUILTIN, HIGH);
+					int Nshift = xcorr_peak.first;
 
-					double tau = xcorr_peak.first * (1. / I2S_SAMPLE_RATE);
-					if (tau >= travel_time_for_max_angle)
-						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", xcorr_peak.first, xcorr_peak.second, tau);
+					double tau =  Nshift* (1. / I2S_SAMPLE_RATE);
+					if (-maxN <= Nshift && Nshift <= maxN){						
+						int angle = dsp.rad2deg(dsp.theta_from_sample(Nshift)) + 0.5;
+						int error = dsp.rad2deg(dsp.theta_error(Nshift)) + 0.5;
+
+						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d +- %d\n", Nshift, xcorr_peak.second, tau, angle, error);
+
+						send_angle(angle, error);
+					}
 					else {
-						int angle = dsp.rad2deg(dsp.calculate_angle(tau)) + 0.5;
-
-						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d\n", xcorr_peak.first, xcorr_peak.second, tau, angle);
-
-						send_angle(angle);
+						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", xcorr_peak.first, xcorr_peak.second, tau);
 					}
 					digitalWrite(LED_BUILTIN, LOW);
 				}
@@ -281,6 +288,7 @@ void setup() {
 	
 
 	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
+	Serial.printf("fs: %d, mics d: %f, max N: %d\n", I2S_SAMPLE_RATE, MICS_DISTANCE, maxN);
 	Serial.printf("setup running on core: %d\n", xPortGetCoreID());
 	mics.init();
 
@@ -377,7 +385,7 @@ void setup() {
 
 	// serverStatic supports gzip automatically
 	// for GMT date us bash command: LC_TIME=en_US.utf8 TZ=GMT date
-	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Sun Mar 19 10:50:46 PM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
+	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Tue May 23 11:30:37 AM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
 		#ifndef RELEASE

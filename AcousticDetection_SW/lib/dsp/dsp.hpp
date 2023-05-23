@@ -18,6 +18,9 @@ const double Ts = 1. / I2S_SAMPLE_RATE;	 // sample time
 
 const double travel_time_for_max_angle = MICS_DISTANCE / SOUND_SPEED;	// how long does it take for sound wave to travel from one microphone to the other
 
+const int maxN = travel_time_for_max_angle*(double)I2S_SAMPLE_RATE;   // int is equal to floor() operation
+
+
 const double correlation_window_time = travel_time_for_max_angle * 50.0;					// 140% of maximum time difference between audio signals
 const int correlation_window_samples_num = 1024; //correlation_window_time / Ts + 0.5;	// how many samples should we take for cross correlation computation
 
@@ -165,11 +168,27 @@ class DSP {
 		return rad_angle*(180./PI);
 	}
 
-	static double calculate_angle(double tau){
+	static double theta_from_sample(int n){
+		/*
+			returns: angle in radians
+		*/
+		return acos((n*Ts*SOUND_SPEED)/MICS_DISTANCE);
+	}
+
+	static double theta_from_tau(double tau){
 		/*
 			returns: angle in radians
 		*/
 		return acos((tau*SOUND_SPEED)/MICS_DISTANCE);
+	}
+
+	static double theta_error(int n){
+		// Thesis chapter: 4.7.2 Chyba odhadu úhlu způsobená vzorkováním
+		/*			
+			returns: error in radians
+		*/
+		if(n <= 0) return theta_from_sample(n)-theta_from_sample(n+1);
+		else       return theta_from_sample(n-1)-theta_from_sample(n);
 	}
 };
 

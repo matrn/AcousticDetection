@@ -1,5 +1,5 @@
 const TIME_TO_HIDE_VALUE = 2000;
-const BARPOLAR_WIDTH = 8;
+// const BARPOLAR_WIDTH = 8;
 
 const margin_sides = 30;
 const plot_layout = {
@@ -44,18 +44,18 @@ class DataUI {
 
 		Plotly.newPlot('chart', this.data, plot_layout, { staticPlot: true, responsive: true });
 
-		this.show_angle(0);
+		this.show_angle(0, 5);
 	}
 
 
-	_create_data(angle) {
+	_create_data(angle, width) {
 		return {
 			// docs: https://plotly.com/javascript/reference/barpolar/#barpolar
 			type: "barpolar",
 			//mode: "lines",
 			r: [0, 1],
 			theta: [0, angle],//-10, angle+10],
-			width: BARPOLAR_WIDTH,
+			width: width, // BARPOLAR_WIDTH,
 			fill: "toself",
 			//fillcolor: color,
 			opacity: 0.7,
@@ -69,7 +69,7 @@ class DataUI {
 	_export_and_redraw() {
 		let new_data = [{ type: "barpolar" }];      // type: "barpolar" is there to keep chart in polar type, without data and this line chart will be broken
 
-		for (let key of Object.keys(this.slots)) new_data.push(this._create_data(key));
+		for (let key of Object.keys(this.slots)) new_data.push(this._create_data(key, this.slots[key].width));
 		//console.log(new_data);
 		this.data.length = 0;
 		this.data.push.apply(this.data, new_data);
@@ -78,7 +78,11 @@ class DataUI {
 	}
 
 
-	show_angle(angle) {
+	show_angle(angle, width) {
+		/*
+			@angle: angle to show in range [-90, 90]
+			@width: width of barpolar "beam" - uncertainity
+		*/
 		if (angle < -90 || angle > 90 || isNaN(angle)) return;
 		
 		this.angle_value_callback(angle + "°");
@@ -93,7 +97,8 @@ class DataUI {
 			'timer': setTimeout(() => {
 				delete this.slots[angle];
 				this._export_and_redraw();
-			}, TIME_TO_HIDE_VALUE)
+			}, TIME_TO_HIDE_VALUE),
+			'width': width,
 		};
 		this._export_and_redraw();
 	}

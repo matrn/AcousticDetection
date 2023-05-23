@@ -85,10 +85,16 @@
 		}
 
 		let ui = new DataUI(angle_value_callback);
-		function angle_callback(angle_raw) {
-			let angle = parseInt(angle_raw);
+		function angle_callback(raw_data) {
+			raw_data = raw_data.split(';');
+			if(raw_data.length !== 2) log.error(`Invalid length of data >${raw_data}< - ${raw_data.length}`);
+			let angle = parseInt(raw_data[0]);
+			let error = parseInt(raw_data[1]);   // = uncertainty
 			if (angle < 0 || angle > 180 || isNaN(angle)) log.warning("ANGLE out of range (0-180°) " + angle);
-			ui.show_angle(angle - 90);
+			if (error < 0 || error > 10  || isNaN(error)) log.warning("ERROR out of range (0-10°) "  + error);
+			log.debug(`angle ${angle} +- ${error}`);
+			let barpolar_width = 2*error;
+			ui.show_angle(angle - 90, barpolar_width);
 		}
 
 
