@@ -137,9 +137,10 @@ class DSP {
 
 		if(quadratic_interpolation){
 			int k = max_Rx_pos;
-			double Ra = Rx(x1,x2, N, k-1, biased);   // R_-1
-			double Rb = Rx(x1,x2, N, k, biased);     // R_0
-			double Rc = Rx(x1,x2, N, k+1, biased);   // R_+1
+			// absolute value should't be necessary but it's to be sure that interpolated parabole is convex (concave would work too)
+			double Ra = abs(Rx(x1,x2, N, k-1, biased));   // R_-1
+			double Rb = abs(Rx(x1,x2, N, k, biased));     // R_0
+			double Rc = abs(Rx(x1,x2, N, k+1, biased));   // R_+1
 
 			double n_new = k+(Rc-Ra)/(2*(Ra+Rc-2*Rb));
 			out.interpolated_max_pos = n_new;

@@ -230,6 +230,12 @@ void dsp_func(void *param) {
 					digitalWrite(LED_BUILTIN, HIGH);
 					int Nshift = xcorr_peak.max_pos;
 
+					if(xcorr_peak.interpolated_max_pos > Nshift+1 || xcorr_peak.interpolated_max_pos < Nshift-1){
+						// this should never happen but added just to be sure
+						Serial.printf("ERROR: interpolation %f is outside of %d+(-1,1) range", xcorr_peak.interpolated_max_pos, Nshift);
+						xcorr_peak.interpolated_max_pos = Nshift;						
+					}
+
 					double tau = xcorr_peak.interpolated_max_pos * (1./I2S_SAMPLE_RATE);
 					if (-maxN <= Nshift && Nshift <= maxN){	
 						// we use interpolated max_pos for angle calculation and normal for error calculation					
