@@ -84,8 +84,26 @@ class DSP {
 		return std::make_pair(k_vec, Rx_vec);
 	}
 
+
 	template <typename T>
-	bool xcorr_max(T x1, T x2, std::pair<int, double> & out, const int N, int max_k = -1, bool biased = true, bool abs_compare = true){
+	double Rx(T & x1, T & x2, const int N, int k, bool biased = true){
+		/* TODO: handle integer overflow */
+		int64_t Rx_sum = 0;
+		if(k < 0){
+			for (int n = 0; n < N - (-k); n++) {
+				Rx_sum += x2[n-k] * x1[n];
+			}
+		} else {
+			for (int n = 0; n < N - k; n++) {
+				Rx_sum += x1[n+k] * x2[n];
+			}
+		}
+		double Rx_k = Rx_sum / (double)(biased ? N : (N - abs(k)));
+		return Rx_k;
+	}
+
+	template <typename T>
+	bool xcorr_max(T & x1, T & x2, xcorr_result_t & out, const int N, int max_k = -1, bool biased = true, bool abs_compare = true, bool quadratic_interpolation = false){
 		/*
 		
 		returns: false if no peak was found
@@ -98,19 +116,7 @@ class DSP {
 		//puts(biased?"BIASED":"UNBIASED");
 		
 		for (int k = -(max_k-1); k <= max_k-1; k++) {
-			/* TODO: handle integer overflow */
-			int64_t Rx_sum = 0;
-			if(k < 0){
-				for (int n = 0; n < N - (-k); n++) {
-					Rx_sum += x2[n-k] * x1[n];
-				}
-			} else {
-				for (int n = 0; n < N - k; n++) {
-					Rx_sum += x1[n+k] * x2[n];
-				}
-			}
-
-			double Rx_k = Rx_sum / (double)(biased ? N : (N - abs(k)));
+			double Rx_k = Rx<T>(x1,x2, N, k, biased);   // calculate cross correlation in point k
 			if(abs_compare) Rx_k = abs(Rx_k);
 			if (Rx_k > max_Rx) {
 				max_Rx = Rx_k;
@@ -128,8 +134,19 @@ class DSP {
 		//Serial.printf("%f,%f,%d\n", avg, max_Rx, (max_Rx_pos != -1)*50000);
 
 		//if (max_Rx_pos != -1) Serial.printf("%d: %f\n", max_Rx_pos, max_Rx);
-		out.first = max_Rx_pos;
-		out.second = max_Rx;
+
+		if(quadratic_interpolation){
+			int k = max_Rx_pos;
+			double Ra = Rx(x1,x2, N, k-1, biased);   // R_-1
+			double Rb = Rx(x1,x2, N, k, biased);     // R_0
+			double Rc = Rx(x1,x2, N, k+1, biased);   // R_+1
+
+			double n_new = k+(Rc-Ra)/(2*(Ra+Rc-2*Rb));
+			out.interpolated_max_pos = n_new;
+		}
+
+		out.max_pos = max_Rx_pos;    // position of maximum
+		out.max_Rx = max_Rx;   // Rx value in maximum
 		return true;
 	}
 	

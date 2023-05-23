@@ -222,25 +222,27 @@ void dsp_func(void *param) {
 				capture_started = false;
 				last_capture = millis();
 
-				std::pair<int, double> xcorr_peak;
-				bool xcorr_peak_found = dsp.xcorr_max<CircularBuffer<audio_sample_t, CORR_SIZE> >(x1, x2, xcorr_peak, CORR_SIZE, max_shift_samples_num + 1, true);
+				xcorr_result_t xcorr_peak;
+				bool xcorr_peak_found = dsp.xcorr_max<CircularBuffer<audio_sample_t, CORR_SIZE> >(x1, x2, xcorr_peak, CORR_SIZE, max_shift_samples_num + 1, true, true, true);
 
 				Serial.println(xcorr_peak_found);
 				if (xcorr_peak_found) {
 					digitalWrite(LED_BUILTIN, HIGH);
-					int Nshift = xcorr_peak.first;
+					int Nshift = xcorr_peak.max_pos;
 
-					double tau =  Nshift* (1. / I2S_SAMPLE_RATE);
-					if (-maxN <= Nshift && Nshift <= maxN){						
-						int angle = dsp.rad2deg(dsp.theta_from_sample(Nshift)) + 0.5;
+					double tau = xcorr_peak.interpolated_max_pos * (1./I2S_SAMPLE_RATE);
+					if (-maxN <= Nshift && Nshift <= maxN){	
+						// we use interpolated max_pos for angle calculation and normal for error calculation					
+						int angle = dsp.rad2deg(dsp.theta_from_tau(tau)) + 0.5;
 						int error = dsp.rad2deg(dsp.theta_error(Nshift)) + 0.5;
 
-						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d +- %d\n", Nshift, xcorr_peak.second, tau, angle, error);
+						Serial.printf("Before interpolation: %d, after: %f\n", xcorr_peak.max_pos, xcorr_peak.interpolated_max_pos);
+						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d +- %d\n", Nshift, xcorr_peak.max_Rx, tau, angle, error);
 
 						send_angle(angle, error);
 					}
 					else {
-						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", xcorr_peak.first, xcorr_peak.second, tau);
+						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", Nshift, xcorr_peak.max_Rx, tau);
 					}
 					digitalWrite(LED_BUILTIN, LOW);
 				}
