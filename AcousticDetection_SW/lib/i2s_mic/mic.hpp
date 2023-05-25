@@ -21,7 +21,7 @@ class DCfilter {
 	audio_sample_t y1_prev = 0;
 
    public:
-	void filter(audio_sample_t* x1) {		
+	void filter(audio_sample_t* x1) {
 		y1_prev = *x1 - x1_prev + 0.995 * y1_prev;	// = y1_new
 		x1_prev = *x1;
 		*x1 = y1_prev;
@@ -96,8 +96,8 @@ class LRMics {
 	}
 
 	audio_sample_t parse_value(i2s_sample_t sample) {
-		sample = sample >> 14;   // remove last 8+6 bits
-		audio_sample_t low = sample & 0xFFFF;   // fit 18bit variable in to 16bit variable
+		sample = sample >> 14;				   // remove last 8+6 bits
+		audio_sample_t low = sample & 0xFFFF;  // fit 18bit variable in to 16bit variable
 
 		// handles int16_t variable overflow by checking if sign changed - it limits 18bit variable into [INT16_MIN, INT16_MAX] interval
 		if (sample > 0 && low < 0) return INT16_MAX;
@@ -142,7 +142,7 @@ class LRMics {
 		int samples_read = bytes_read / sizeof(i2s_sample_t);
 		int count = 0;
 		for (int i = 0; i < samples_read; i++) {
-			// data in the raw_samples_buffer are in format left,right,left,right,left,right...	
+			// data in the raw_samples_buffer are in format left,right,left,right,left,right...
 			audio_sample_t left = parse_value(raw_samples_buffer[i++]);
 			audio_sample_t right = parse_value(raw_samples_buffer[i]);
 

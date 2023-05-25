@@ -1,8 +1,7 @@
 #include <Arduino.h>
 #include <unity.h>
+
 #include "../include/circular_buffer.hpp"
-
-
 
 void setUp(void) {
 	// set stuff up here
@@ -15,13 +14,12 @@ void tearDown(void) {
 void test_circular_buffer() {
 	CircularBuffer<int, 4> buff;
 
-
 	buff.push(1);
-	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 1/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 1 / 4.);
 	buff.push(2);
-	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 3/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 3 / 4.);
 	buff.push(3);
-	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 6/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 6 / 4.);
 	buff.push(4);
 	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 2.5);
 
@@ -36,13 +34,12 @@ void test_circular_buffer() {
 	TEST_ASSERT_EQUAL_INT(buff[2], 4);
 	TEST_ASSERT_EQUAL_INT(buff[3], 5);
 
-
 	buff.push(6);
 	TEST_ASSERT_EQUAL_INT(buff[0], 3);
 	TEST_ASSERT_EQUAL_INT(buff[1], 4);
 	TEST_ASSERT_EQUAL_INT(buff[2], 5);
 	TEST_ASSERT_EQUAL_INT(buff[3], 6);
-	
+
 	buff.push(7);
 	TEST_ASSERT_EQUAL_INT(buff[0], 4);
 	TEST_ASSERT_EQUAL_INT(buff[1], 5);
@@ -62,9 +59,8 @@ void test_circular_buffer() {
 	TEST_ASSERT_EQUAL_INT(buff[3], 9);
 }
 
-
-void setup(){
-	delay(2000); // service delay
+void setup() {
+	delay(2000);  // service delay
 	UNITY_BEGIN();
 
 	RUN_TEST(test_circular_buffer);
@@ -72,5 +68,5 @@ void setup(){
 	UNITY_END();
 }
 
-void loop(){
+void loop() {
 }

@@ -29,8 +29,6 @@
 // ------------------------------ //
 #define LAST_CAPTURE_THRESHOLD 100	// 100ms - minimal delay between acoustic event detections - it's used to prevent detection of sound reflections
 
-
-
 #ifdef ENABLE_WIFI_AP
 #include <DNSServer.h>
 DNSServer dnsServer;
@@ -82,19 +80,18 @@ LRMics mics(I2S_NUM_0);
 TaskHandle_t dsp_task;
 DSP dsp;
 
-
 AsyncWebServer server(80);
 #ifdef ENABLE_WS
-	AsyncWebSocket ws("/ws");
+AsyncWebSocket ws("/ws");
 #endif
 #ifdef ENABLE_SSE
-	AsyncEventSource events("/events");
-	#define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
-	unsigned long last_sse_alive_msg_time = 0;
+AsyncEventSource events("/events");
+#define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
+unsigned long last_sse_alive_msg_time = 0;
 
-	void sse_send_alive_msg() {
-		events.send(String(millis()).c_str(), "alive");
-	}
+void sse_send_alive_msg() {
+	events.send(String(millis()).c_str(), "alive");
+}
 #endif
 
 OnsetDetector od1;
@@ -130,7 +127,7 @@ void dsp_func(void *param) {
 	while (true) {
 		// mics.read_and_print();
 		// continue;
-		
+
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
 		int sampled = 0;
 		int ppp = 0;
@@ -145,15 +142,14 @@ void dsp_func(void *param) {
 			// Serial.println("-------RIGHT-------");
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->right_channel_data[i]);
 			// Serial.println("-------------------");
-		
+
 			memcpy(data_for_send + sampled * sizeof(int16_t), sampler->data, count * sizeof(int16_t));
 			sampled += count;
-			
+
 			if (ppp == 5) httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
 			if (ppp == 6) httpClient.addHeader("content-type", "application/octet-stream");
 			ppp++;
 		}
-	
 
 		digitalWrite(LED_BUILTIN, HIGH);
 		httpClient.POST(data_for_send, sampled * sizeof(int16_t));

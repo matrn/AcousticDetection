@@ -1,7 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-
 // Wi-Fi STA
 const char* wifi_ssid = "SSID";
 const char* wifi_password = "PASSPHRASE";
@@ -15,6 +14,5 @@ const char* hostname = "AcousticDetection";
 
 // ESP OTA password
 const char* ota_password = "ota_password";
-
 
 #endif
