@@ -4,6 +4,7 @@
 This repository contains the source code, schematic, and PCB layout of a demonstration device designed to detect and locate acoustic impulse events. The device is composed of an ESP32 microcontroller and two MEMS microphones SPH0645LM4H.
 
 ![PCB 3D view](docs/assets/3D_view_both.png)
+![PCB 3D view](docs/assets/web_crop.png)
 
 
 ## Directories
