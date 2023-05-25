@@ -1,9 +1,11 @@
-~~# matplotplusplus install
+# DSP toolbox
+
+## ~~matplotplusplus install~~
 - `vcpkg install`: [https://vcpkg.io/en/getting-started.html](https://vcpkg.io/en/getting-started.html)
 - `vcpkg install matplotplusplus`
 ~~
 
-# sciplot install
+## sciplot install
 `sudo apt install gnuplot`
 ```
 git clone https://github.com/sciplot/sciplot --recursive
