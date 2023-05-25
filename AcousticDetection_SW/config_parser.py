@@ -1,3 +1,5 @@
+""" Code for parsing C++ header file - variables value """
+
 import re
 import os
 
