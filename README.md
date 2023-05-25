@@ -9,6 +9,6 @@ This repository contains the source code, schematic, and PCB layout of a demonst
 ## Directories
 - `AcousticDetection_HW/` - KiCad schematic & PCB
 - `AcousticDetection_SW/` - source code of the ESP32 firmware
-- `web` - source the web page for ESP32
+- `web` - source code for the ESP32 web page
 - `models` - 3D models for 3D printing
 - `dsp_toolbox/` - some tools used during development of the signal processing
