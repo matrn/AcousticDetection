@@ -5,8 +5,6 @@
 #include <driver/i2s.h>
 #include <soc/i2s_reg.h>
 
-#include <functional>
-
 #include "../../include/types.hpp"
 #include "config.hpp"
 
@@ -74,7 +72,7 @@ class LRMics {
 				;
 		}
 
-		// FIXES for SPH0645
+		// I2S Timing fixes for SPH0645
 		REG_SET_BIT(I2S_TIMING_REG(this->i2s_port), BIT(9));
 		REG_SET_BIT(I2S_CONF_REG(this->i2s_port), I2S_RX_MSB_SHIFT);
 
@@ -96,6 +94,9 @@ class LRMics {
 	}
 
 	audio_sample_t parse_value(i2s_sample_t sample) {
+		/*
+			parses I2S sample from the 18bit microphone SPH0645 and returns 16bit signed variable
+		*/
 		sample = sample >> 14;				   // remove last 8+6 bits
 		audio_sample_t low = sample & 0xFFFF;  // fit 18bit variable in to 16bit variable
 
@@ -110,7 +111,7 @@ class LRMics {
 		dc_filt_2.filter(x2);
 	}
 
-	void read_and_print() {
+	void read_and_print(bool dc_filter = true) {
 		i2s_read(this->i2s_port, &raw_samples_buffer, sizeof(raw_samples_buffer), &bytes_read, portMAX_DELAY);
 		// Serial.printf("read %d Bytes\n", bytes_read);
 
@@ -118,16 +119,11 @@ class LRMics {
 		for (int i = 0; i < samples_read; i++) {
 			// Serial.print(raw_samples_buffer[i++], BIN); Serial.print(", ");
 			// Serial.println(raw_samples_buffer[i], BIN); continue;
-			// audio_sample_t l = parse_value(raw_samples_buffer[i++]);
-			// audio_sample_t r = parse_value(raw_samples_buffer[i]);
-			// Serial.print(l, BIN); Serial.print(", ");
-			// Serial.println(r, BIN); continue;
 
-			// Serial.printf("[%d] = %d\n", i, raw_samples_buffer[i] & 0x0FFF); // Print with indexes
 			audio_sample_t left = parse_value(raw_samples_buffer[i++]);
 			audio_sample_t right = parse_value(raw_samples_buffer[i]);
 
-			this->dc_filter(&left, &right);
+			if (dc_filter) this->dc_filter(&left, &right);
 			Serial.printf("%d,%d\n", left, right);	// Print compatible with Arduino Plotter
 		}
 		// Serial.printf("\n");

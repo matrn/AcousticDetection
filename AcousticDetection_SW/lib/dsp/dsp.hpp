@@ -82,7 +82,7 @@ class DSP {
 		/*
 			returns Rx[k] - cross correlation in the point `k`
 		*/
-		/* TODO: handle integer overflow */
+		/* TODO: correctly handle integer overflow */
 		int64_t Rx_sum = 0;
 		if (k < 0) {
 			for (int n = 0; n < N - (-k); n++) {
@@ -151,6 +151,7 @@ class DSP {
 		out.max_Rx = max_Rx;	   // Rx value in maximum
 		return true;
 	}
+
 
 	static double rad2deg(double rad_angle) {
 		/*
