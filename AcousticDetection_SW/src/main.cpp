@@ -30,6 +30,7 @@
 #define LAST_CAPTURE_THRESHOLD 100	// 100ms - minimal delay between acoustic event detections - it's used to prevent detection of sound reflections
 
 
+
 #ifdef ENABLE_WIFI_AP
 #include <DNSServer.h>
 DNSServer dnsServer;
@@ -67,10 +68,8 @@ class CaptiveRequestHandler : public AsyncWebHandler {
 // #define AUDIO_CAPTURE_SERVER_URL "http://10.42.0.1:5005/i2s_samples"
 #define SAMPLES_PER_REQ 1024 * 50
 #include <HTTPClient.h>
-// unsigned long last_audio_capture_conn_check_time = 0;
 WiFiClient wifiClient;
 HTTPClient httpClient;
-// WiFiClient audio_capture_server_client;
 uint8_t *data_for_send;
 #endif
 
@@ -81,23 +80,21 @@ CircularBuffer<audio_sample_t, CORR_SIZE> x2;
 LRMics mics(I2S_NUM_0);
 
 TaskHandle_t dsp_task;
-
 DSP dsp;
 
-// SKETCH BEGIN
+
 AsyncWebServer server(80);
 #ifdef ENABLE_WS
-AsyncWebSocket ws("/ws");
+	AsyncWebSocket ws("/ws");
 #endif
-
 #ifdef ENABLE_SSE
-AsyncEventSource events("/events");
-#define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
-unsigned long last_sse_alive_msg_time = 0;
+	AsyncEventSource events("/events");
+	#define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
+	unsigned long last_sse_alive_msg_time = 0;
 
-void sse_send_alive_msg() {
-	events.send(String(millis()).c_str(), "alive");
-}
+	void sse_send_alive_msg() {
+		events.send(String(millis()).c_str(), "alive");
+	}
 #endif
 
 OnsetDetector od1;
@@ -119,10 +116,6 @@ void send_angle(int angle, int error) {
 #endif
 }
 
-
-
-
-
 void dsp_func(void *param) {
 	Serial.printf("DSP running on core: %d\n", xPortGetCoreID());
 	LRMics *sampler = (LRMics *)(param);
@@ -137,9 +130,7 @@ void dsp_func(void *param) {
 	while (true) {
 		// mics.read_and_print();
 		// continue;
-		//
-		// delay(10000);
-
+		
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
 		int sampled = 0;
 		int ppp = 0;
@@ -154,34 +145,21 @@ void dsp_func(void *param) {
 			// Serial.println("-------RIGHT-------");
 			// for(int i = 0; i < count; i ++) Serial.printf("%d,", sampler->right_channel_data[i]);
 			// Serial.println("-------------------");
-			// if(audio_capture_server_client.connected()){
-
+		
 			memcpy(data_for_send + sampled * sizeof(int16_t), sampler->data, count * sizeof(int16_t));
 			sampled += count;
-			// for(int i = 0; i < count*2; i ++){
-			// 	Serial.printf("%d, ", ((int16_t*)data)[i]);
-			// }
-			// Serial.println();
+			
 			if (ppp == 5) httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
 			if (ppp == 6) httpClient.addHeader("content-type", "application/octet-stream");
 			ppp++;
 		}
-		// data_for_send.push(data);
+	
 
 		digitalWrite(LED_BUILTIN, HIGH);
-
 		httpClient.POST(data_for_send, sampled * sizeof(int16_t));
 		httpClient.end();
 		digitalWrite(LED_BUILTIN, LOW);
 		// free(data);
-
-		// for(int i = 0; i < count; i ++){
-		// 	audio_sample_t left = sampler->left_channel_data[i];
-		// 	audio_sample_t right = sampler->right_channel_data[i];
-
-		// 	audio_capture_server_client.write(sampler->left_channel_data, count*sizeof(audio_sample_t));
-		// 	audio_capture_server_client.write(sampler->right_channel_data, count*sizeof(audio_sample_t));
-		//}
 
 #else
 		int count = sampler->read();  //[](audio_sample_t left, audio_sample_t right){
@@ -289,15 +267,12 @@ void setup() {
 	// 	data_for_send.push((uint8_t*)malloc(SAMPLES_PER_REQ*sizeof(int16_t)));
 	// }
 	// Serial.println(ESP.getFreeHeap());
-	// adc2.init();
-
 	// auto start = micros();
 	// for(int i = 0; i < 100; i ++){
 	// 	correlation(x1, x2, CORR_SIZE, max_shift_samples_num);
 	// }
 	// auto end = micros();
 	// Serial.printf("Correlation time: %f us\n", (end-start)/100.);
-	// delay(10000);
 	// while(1);
 	/* Core where the task should run */
 
@@ -497,15 +472,4 @@ void loop() {
 	dnsServer.processNextRequest();
 #endif
 #endif
-
-	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
-	// 	if(millis()-last_audio_capture_conn_check_time > 3000){
-	// 		last_audio_capture_conn_check_time = millis();
-	// 		if(!audio_capture_server_client.connected()){
-	// 			if (!audio_capture_server_client.connect(AUDIO_CAPTURE_SERVER_IP, AUDIO_CAPTURE_SERVER_PORT)) {
-	// 				Serial.println("Connection failed.");
-	// 			}
-	// 		}
-	// 	}
-	// #endif
 }

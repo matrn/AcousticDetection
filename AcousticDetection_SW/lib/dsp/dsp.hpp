@@ -136,10 +136,6 @@ class DSP {
 		if (abs(max_Rx) <= abs(avg * 1.8)) return false;
 #endif
 
-		// Serial.printf("%f,%f,%d\n", avg, max_Rx, (max_Rx_pos != -1)*50000);
-
-		// if (max_Rx_pos != -1) Serial.printf("%d: %f\n", max_Rx_pos, max_Rx);
-
 		if (quadratic_interpolation) {
 			int k = max_Rx_pos;
 			// absolute value should't be necessary but it's to be sure that interpolated parabole in correct (concave (convex should work too)) but if one point is positive and second is negative, parabole will be incorrect
