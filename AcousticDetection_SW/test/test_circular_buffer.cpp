@@ -17,13 +17,13 @@ void test_circular_buffer() {
 
 
 	buff.push(1);
-	TEST_ASSERT_EQUAL_FLOAT(buff.avg(), 1/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 1/4.);
 	buff.push(2);
-	TEST_ASSERT_EQUAL_FLOAT(buff.avg(), 3/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 3/4.);
 	buff.push(3);
-	TEST_ASSERT_EQUAL_FLOAT(buff.avg(), 6/4.);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 6/4.);
 	buff.push(4);
-	TEST_ASSERT_EQUAL_FLOAT(buff.avg(), 2.5);
+	TEST_ASSERT_EQUAL_FLOAT(buff.mean(), 2.5);
 
 	TEST_ASSERT_EQUAL_INT(buff[0], 1);
 	TEST_ASSERT_EQUAL_INT(buff[1], 2);
