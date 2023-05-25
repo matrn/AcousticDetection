@@ -27,6 +27,8 @@
 
 // #define AUDIO_CAPTURE_SERVER_ENABLED
 // ------------------------------ //
+#define LAST_CAPTURE_THRESHOLD 100	// 100ms - minimal delay between acoustic event detections - it's used to prevent detection of sound reflections
+
 
 #ifdef ENABLE_WIFI_AP
 #include <DNSServer.h>
@@ -92,6 +94,10 @@ AsyncWebSocket ws("/ws");
 AsyncEventSource events("/events");
 #define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
 unsigned long last_sse_alive_msg_time = 0;
+
+void sse_send_alive_msg() {
+	events.send(String(millis()).c_str(), "alive");
+}
 #endif
 
 OnsetDetector od1;
@@ -113,19 +119,18 @@ void send_angle(int angle, int error) {
 #endif
 }
 
-void sse_send_alive_msg() {
-	events.send(String(millis()).c_str(), "alive");
-}
 
-#define LAST_CAPTURE_THRESHOLD 100	// 100ms
+
+
 
 void dsp_func(void *param) {
 	Serial.printf("DSP running on core: %d\n", xPortGetCoreID());
 	LRMics *sampler = (LRMics *)(param);
 
 #ifndef AUDIO_CAPTURE_SERVER_ENABLED
-	int qq = 0;
+	int capture_number_of_samples = 0;
 	bool capture_started = false;
+
 	unsigned long last_capture = 0;
 #endif
 
@@ -195,9 +200,9 @@ void dsp_func(void *param) {
 				x2.push(right);
 			}
 
-			if (capture_started && ++qq >= CORR_SIZE) {
+			if (capture_started && ++capture_number_of_samples >= CORR_SIZE) {
 				Serial.println("START PROCESSING");
-				qq = 0;
+				capture_number_of_samples = 0;
 				capture_started = false;
 				last_capture = millis();
 

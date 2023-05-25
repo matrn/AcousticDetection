@@ -8,7 +8,7 @@
 
 // I2S settings (for DMA)
 #define I2S_SAMPLE_RATE 44100  // 44.1 kHz
-#define I2S_DMA_BUF_COUNT 14
+#define I2S_DMA_BUF_COUNT 14   // see: https://www.atomic14.com/2021/04/20/esp32-i2s-dma-buf-len-buf-count.html
 #define I2S_DMA_BUF_LEN 1024
 
 
