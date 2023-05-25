@@ -125,7 +125,7 @@ class DSP {
 		}
 
 		#ifdef XCORR_MA_ENABLED
-			double avg = xcorr_mov_avg_buf.avg();
+			double avg = xcorr_mov_avg_buf.mean();
 			xcorr_mov_avg_buf.push(max_Rx);
 			//Serial.printf("max: %f, avg: %f\n", max_Rx, avg);
 			if(abs(max_Rx) <= abs(avg*1.8)) return false;
@@ -173,7 +173,7 @@ class DSP {
 	// 		// Serial.println(Rx_k);
 	// 	}
 		
-	// 	auto avg = xcorr_mov_avg_buf.avg();
+	// 	auto avg = xcorr_mov_avg_buf.mean();
 	// 	if(abs(max_Rx) <= abs(avg*1.5)) max_Rx_pos = -1;
 	// 	xcorr_mov_avg_buf.push(max_Rx);
 	// 	//Serial.printf("%f,%f,%d\n", avg, max_Rx, (max_Rx_pos != -1)*50000);

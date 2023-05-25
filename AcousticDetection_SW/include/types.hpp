@@ -6,6 +6,8 @@
 typedef int32_t i2s_sample_t; 
 typedef int16_t audio_sample_t;
 
+
+// returned from cross correlation function (CCF)
 typedef struct xcorr_result {
 	int max_pos;   // position of maximum of the cross correlation function Rx
 	double interpolated_max_pos;   // set if interpolation is used
