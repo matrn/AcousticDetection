@@ -28,73 +28,53 @@
 // #define AUDIO_CAPTURE_SERVER_ENABLED
 // ------------------------------ //
 
-
-
 #ifdef ENABLE_WIFI_AP
-	#include <DNSServer.h>
-	DNSServer dnsServer;
-	const IPAddress AP_local_ip(192,168,1,1);
-	const IPAddress AP_gateway(192,168,1,1);
-	const IPAddress AP_subnet(255,255,255,0);
+#include <DNSServer.h>
+DNSServer dnsServer;
+const IPAddress AP_local_ip(192, 168, 1, 1);
+const IPAddress AP_gateway(192, 168, 1, 1);
+const IPAddress AP_subnet(255, 255, 255, 0);
 
-	#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
-		class CaptiveRequestHandler : public AsyncWebHandler {
-			public:
-			CaptiveRequestHandler() {}
-			virtual ~CaptiveRequestHandler() {}
+#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
+class CaptiveRequestHandler : public AsyncWebHandler {
+   public:
+	CaptiveRequestHandler() {}
+	virtual ~CaptiveRequestHandler() {}
 
-			bool canHandle(AsyncWebServerRequest *request){
-				//request->addInterestingHeader("ANY");
-				return true;
-			}
+	bool canHandle(AsyncWebServerRequest *request) {
+		// request->addInterestingHeader("ANY");
+		return true;
+	}
 
-			void handleRequest(AsyncWebServerRequest *request) {
-				// AsyncResponseStream *response = request->beginResponseStream("text/html");
-				// response->print("<!DOCTYPE html><html><head><title>Captive Portal</title></head><body>");
-				// response->print("<p>This is out captive portal front page.</p>");
-				// response->printf("<p>You were trying to reach: http://%s%s</p>", request->host().c_str(), request->url().c_str());
-				// response->printf("<p>Try opening <a href='http://%s'>this link</a> instead</p>", WiFi.softAPIP().toString().c_str());
-				// response->print("</body></html>");
-				// request->send(response);
-				Serial.printf("Client was trying to reach: http://%s%s\n", request->host().c_str(), request->url().c_str());
-				AsyncWebServerResponse *response = request->beginResponse(302);
-				response->addHeader("Location", "http://" + WiFi.softAPIP().toString());
-				return request->send(response);
-			}
-		};
-	#endif
+	void handleRequest(AsyncWebServerRequest *request) {
+		Serial.printf("Client was trying to reach: http://%s%s\n", request->host().c_str(), request->url().c_str());
+		AsyncWebServerResponse *response = request->beginResponse(302);
+		response->addHeader("Location", "http://" + WiFi.softAPIP().toString());
+		return request->send(response);
+	}
+};
 #endif
-
+#endif
 
 #ifdef ENABLE_OTA
-	#include <ArduinoOTA.h>
+#include <ArduinoOTA.h>
 #endif
-
 
 #ifdef AUDIO_CAPTURE_SERVER_ENABLED
-	#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:5005/i2s_samples"  //"http://192.168.26.92:5005/i2s_samples"
-	// #define AUDIO_CAPTURE_SERVER_URL "http://10.42.0.1:5005/i2s_samples"
-	#define SAMPLES_PER_REQ 1024 * 50
-	#include <HTTPClient.h>
-	unsigned long last_audio_capture_conn_check_time = 0;
-	WiFiClient wifiClient;
-	HTTPClient httpClient;
-	// WiFiClient audio_capture_server_client;
-	// CircularBuffer<uint8_t *, 2> data_for_send;
-	uint8_t *data_for_send;
+#define AUDIO_CAPTURE_SERVER_URL "http://192.168.0.100:5005/i2s_samples"  //"http://192.168.26.92:5005/i2s_samples"
+// #define AUDIO_CAPTURE_SERVER_URL "http://10.42.0.1:5005/i2s_samples"
+#define SAMPLES_PER_REQ 1024 * 50
+#include <HTTPClient.h>
+// unsigned long last_audio_capture_conn_check_time = 0;
+WiFiClient wifiClient;
+HTTPClient httpClient;
+// WiFiClient audio_capture_server_client;
+uint8_t *data_for_send;
 #endif
-
-// #define ADC_INPUT1 ADC1_CHANNEL_4	 // pin 32
-// #define ADC_INPUT2 ADC1_CHANNEL_5	 // pin 33
-
-// #define SAMPLES_NUM 512
 
 #define CORR_SIZE correlation_window_samples_num
 CircularBuffer<audio_sample_t, CORR_SIZE> x1;
 CircularBuffer<audio_sample_t, CORR_SIZE> x2;
-
-// ADC adc1(ADC_INPUT1, I2S_NUM_0);
-// ADC adc2(ADC_INPUT2, I2S_NUM_1);
 
 LRMics mics(I2S_NUM_0);
 
@@ -105,18 +85,17 @@ DSP dsp;
 // SKETCH BEGIN
 AsyncWebServer server(80);
 #ifdef ENABLE_WS
-	AsyncWebSocket ws("/ws");
+AsyncWebSocket ws("/ws");
 #endif
 
 #ifdef ENABLE_SSE
-	AsyncEventSource events("/events");
-	#define SSE_SEND_ALIVE_MSG_TIME 8*1000   // 8 seconds
-	unsigned long last_sse_alive_msg_time = 0;
+AsyncEventSource events("/events");
+#define SSE_SEND_ALIVE_MSG_TIME 8 * 1000  // 8 seconds
+unsigned long last_sse_alive_msg_time = 0;
 #endif
 
 OnsetDetector od1;
 OnsetDetector od2;
-
 
 void send_angle(int angle, int error) {
 	/*
@@ -125,29 +104,30 @@ void send_angle(int angle, int error) {
 	*/
 	char str[12];
 	sprintf(str, "%d;%d", angle, error);
-	#ifdef ENABLE_WS
-		ws.textAll(str);
-	#endif
+#ifdef ENABLE_WS
+	ws.textAll(str);
+#endif
 
-	#ifdef ENABLE_SSE
-		events.send(str, "angle");
-	#endif
+#ifdef ENABLE_SSE
+	events.send(str, "angle");
+#endif
 }
 
-void sse_send_alive_msg(){
+void sse_send_alive_msg() {
 	events.send(String(millis()).c_str(), "alive");
 }
 
-
-#define LAST_CAPTURE_THRESHOLD 100   // 100ms
+#define LAST_CAPTURE_THRESHOLD 100	// 100ms
 
 void dsp_func(void *param) {
 	Serial.printf("DSP running on core: %d\n", xPortGetCoreID());
 	LRMics *sampler = (LRMics *)(param);
 
+#ifndef AUDIO_CAPTURE_SERVER_ENABLED
 	int qq = 0;
 	bool capture_started = false;
 	unsigned long last_capture = 0;
+#endif
 
 	while (true) {
 		// mics.read_and_print();
@@ -214,8 +194,6 @@ void dsp_func(void *param) {
 				x1.push(left);
 				x2.push(right);
 			}
-			// if(qq++ < 512) continue;
-			// qq = 0;
 
 			if (capture_started && ++qq >= CORR_SIZE) {
 				Serial.println("START PROCESSING");
@@ -231,15 +209,15 @@ void dsp_func(void *param) {
 					digitalWrite(LED_BUILTIN, HIGH);
 					int Nshift = xcorr_peak.max_pos;
 
-					if(xcorr_peak.interpolated_max_pos > Nshift+1 || xcorr_peak.interpolated_max_pos < Nshift-1){
+					if (xcorr_peak.interpolated_max_pos > Nshift + 1 || xcorr_peak.interpolated_max_pos < Nshift - 1) {
 						// this should never happen but added just to be sure
 						Serial.printf("ERROR: interpolation %f is outside of %d+(-1,1) range", xcorr_peak.interpolated_max_pos, Nshift);
-						xcorr_peak.interpolated_max_pos = Nshift;						
+						xcorr_peak.interpolated_max_pos = Nshift;
 					}
 
-					double tau = xcorr_peak.interpolated_max_pos * (1./I2S_SAMPLE_RATE);
-					if (-maxN <= Nshift && Nshift <= maxN){	
-						// we use interpolated max_pos for angle calculation and normal for error calculation					
+					double tau = xcorr_peak.interpolated_max_pos * (1. / I2S_SAMPLE_RATE);
+					if (-maxN <= Nshift && Nshift <= maxN) {
+						// we use interpolated max_pos for angle calculation and normal for error calculation
 						int angle = dsp.rad2deg(dsp.theta_from_tau(tau)) + 0.5;
 						int error = dsp.rad2deg(dsp.theta_error(Nshift)) + 0.5;
 
@@ -247,54 +225,50 @@ void dsp_func(void *param) {
 						Serial.printf("N: %d, max: %f, tau: %f s, angle: %d +- %d\n", Nshift, xcorr_peak.max_Rx, tau, angle, error);
 
 						send_angle(angle, error);
-					}
-					else {
+					} else {
 						Serial.printf("XCORR - shift too big: N: %d, max: %f, tau: %f s\n", Nshift, xcorr_peak.max_Rx, tau);
 					}
 					digitalWrite(LED_BUILTIN, LOW);
 				}
 			}
 		}
-		// ws.textAll("AA");
 #endif
 	}
 }
 
 #ifdef ENABLE_WS
-	void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-		if (type == WS_EVT_CONNECT) {
-			Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
-			client->printf("Hello Client %u :)", client->id());
-			client->ping();
-		} else if (type == WS_EVT_DISCONNECT) {
-			Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
-		} else if (type == WS_EVT_ERROR) {
-			Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t *)arg), (char *)data);
-		} else if (type == WS_EVT_PONG) {
-			Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len) ? (char *)data : "");
-		} else if (type == WS_EVT_DATA) {
-		}
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+	if (type == WS_EVT_CONNECT) {
+		Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+		client->printf("Hello Client %u :)", client->id());
+		client->ping();
+	} else if (type == WS_EVT_DISCONNECT) {
+		Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
+	} else if (type == WS_EVT_ERROR) {
+		Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t *)arg), (char *)data);
+	} else if (type == WS_EVT_PONG) {
+		Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len) ? (char *)data : "");
+	} else if (type == WS_EVT_DATA) {
 	}
+}
 #endif
-
 
 void setup() {
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
 	Serial.begin(115200);
-	#ifndef RELEASE
-		Serial.setDebugOutput(true);
-	#endif
+#ifndef RELEASE
+	Serial.setDebugOutput(true);
+#endif
 	Serial.print(F("START, file: " __FILE__ " built on " __DATE__ " " __TIME__));
-	#ifdef RELEASE
-		Serial.println(" - RELEASE version");
-	#else
-		Serial.println(" - DEBUG version");
-	#endif
+#ifdef RELEASE
+	Serial.println(" - RELEASE version");
+#else
+	Serial.println(" - DEBUG version");
+#endif
 	Serial.println("-----------------------------");
 	Serial.println("ESP32 Acoustic Detection v0.3");
 	Serial.println("-----------------------------");
-	
 
 	Serial.printf("xcorr window size: %d\n", CORR_SIZE);
 	Serial.printf("fs: %d, mics d: %f, max N: %d\n", I2S_SAMPLE_RATE, MICS_DISTANCE, maxN);
@@ -325,8 +299,8 @@ void setup() {
 #ifdef ENABLE_WIFI_AP
 	// docs: https://espressif-docs.readthedocs-hosted.com/projects/arduino-esp32/en/latest/api/wifi.html
 	Serial.println("---------- AP mode ----------");
-	Serial.println(String("AP creation: ") + (WiFi.softAP(wifi_ap_ssid, wifi_ap_pass, 6, 0, 4)?"true":"false"));
-	Serial.println(String("AP config: ") + (WiFi.softAPConfig(AP_local_ip, AP_gateway, AP_subnet)?"true":"false"));
+	Serial.println(String("AP creation: ") + (WiFi.softAP(wifi_ap_ssid, wifi_ap_pass, 6, 0, 4) ? "true" : "false"));
+	Serial.println(String("AP config: ") + (WiFi.softAPConfig(AP_local_ip, AP_gateway, AP_subnet) ? "true" : "false"));
 	Serial.println("-----------------------------");
 #else
 	Serial.println("---------- STA mode ----------");
@@ -354,28 +328,28 @@ void setup() {
 	ArduinoOTA.onStart([]() { events.send("Update Start", "ota"); });
 	ArduinoOTA.onEnd([]() { events.send("Update End", "ota"); });
 	ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-		#ifdef ENABLE_SSE
-			char p[32];
-			sprintf(p, "Progress: %u%%\n", (progress / (total / 100)));
-			events.send(p, "ota");
-		#endif
+#ifdef ENABLE_SSE
+		char p[32];
+		sprintf(p, "Progress: %u%%\n", (progress / (total / 100)));
+		events.send(p, "ota");
+#endif
 	});
 	ArduinoOTA.onError([](ota_error_t error) {
-		#ifdef ENABLE_SSE
-			if (error == OTA_AUTH_ERROR)
-				events.send("Auth Failed", "ota");
-			else if (error == OTA_BEGIN_ERROR)
-				events.send("Begin Failed", "ota");
-			else if (error == OTA_CONNECT_ERROR)
-				events.send("Connect Failed", "ota");
-			else if (error == OTA_RECEIVE_ERROR)
-				events.send("Recieve Failed", "ota");
-			else if (error == OTA_END_ERROR)
-				events.send("End Failed", "ota");
-		#endif
+#ifdef ENABLE_SSE
+		if (error == OTA_AUTH_ERROR)
+			events.send("Auth Failed", "ota");
+		else if (error == OTA_BEGIN_ERROR)
+			events.send("Begin Failed", "ota");
+		else if (error == OTA_CONNECT_ERROR)
+			events.send("Connect Failed", "ota");
+		else if (error == OTA_RECEIVE_ERROR)
+			events.send("Recieve Failed", "ota");
+		else if (error == OTA_END_ERROR)
+			events.send("End Failed", "ota");
+#endif
 	});
 	// Port defaults to 3232
-	//ArduinoOTA.setPort(ota_port);
+	// ArduinoOTA.setPort(ota_port);
 
 	// Hostname defaults to esp3232-[MAC]
 	ArduinoOTA.setHostname(hostname);
@@ -397,7 +371,7 @@ void setup() {
 	server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html").setLastModified("Tue May 23 11:30:37 AM GMT 2023");  //.setCacheControl("max-age=600");   // Cache responses for 10 minutes (600 seconds)
 
 	server.onNotFound([](AsyncWebServerRequest *request) {
-		#ifndef RELEASE
+#ifndef RELEASE
 		Serial.printf("NOT_FOUND: ");
 		if (request->method() == HTTP_GET)
 			Serial.printf("GET");
@@ -440,94 +414,50 @@ void setup() {
 				Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
 			}
 		}
-		#endif
+#endif
 
-		#ifdef ENABLE_WIFI_AP
-			#ifdef ENABLE_WIFI_AP_404_REDIRECT
-				if(request->getHeader("host")->value() != WiFi.softAPIP().toString()){
-					Serial.printf("Wrong host http://%s%s\n, redirecting\n", request->host().c_str(), request->url().c_str());
-					request->redirect("http://" + WiFi.softAPIP().toString());
-				}
-				else {
-					request->send(404, "text/plain", "404 Not Found");
-				}
-			#else
-				request->send(404, "text/plain", "404 Not Found");
-			#endif
-		#else
+#ifdef ENABLE_WIFI_AP
+#ifdef ENABLE_WIFI_AP_404_REDIRECT
+		if (request->getHeader("host")->value() != WiFi.softAPIP().toString()) {
+			Serial.printf("Wrong host http://%s%s\n, redirecting\n", request->host().c_str(), request->url().c_str());
+			request->redirect("http://" + WiFi.softAPIP().toString());
+		} else {
 			request->send(404, "text/plain", "404 Not Found");
-		#endif
+		}
+#else
+		request->send(404, "text/plain", "404 Not Found");
+#endif
+#else
+		request->send(404, "text/plain", "404 Not Found");
+#endif
 	});
 
-	#ifdef ENABLE_WS
-		ws.onEvent(onWsEvent);
-		server.addHandler(&ws);
-	#endif
+#ifdef ENABLE_WS
+	ws.onEvent(onWsEvent);
+	server.addHandler(&ws);
+#endif
 
-	#ifdef ENABLE_SSE
-		#ifdef ENABLE_SSE_CORS_HEADER
-			DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-		#endif
-		events.onConnect([](AsyncEventSourceClient *client) {
-			// if(client->lastId()){
-			// 	Serial.printf("Client reconnected! Last message ID that it gat is: %u\n", client->lastId());
-			// }
-			// //send event with message "hello!", id current millis
-			// // and set reconnect delay to 1 second
-			//client->send("hello!", NULL, millis(), 1000);
-			sse_send_alive_msg();
-		});
-		server.addHandler(&events);
-	#endif
+#ifdef ENABLE_SSE
+#ifdef ENABLE_SSE_CORS_HEADER
+	DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+#endif
+	events.onConnect([](AsyncEventSourceClient *client) {
+		sse_send_alive_msg();
+	});
+	server.addHandler(&events);
+#endif
 
-	// server.onFileUpload([](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
-	// 	if (!index)
-	// 		Serial.printf("UploadStart: %s\n", filename.c_str());
-	// 	Serial.printf("%s", (const char *)data);
-	// 	if (final)
-	// 		Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index + len);
-	// });
-	// server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-	// 	if (!index)
-	// 		Serial.printf("BodyStart: %u\n", total);
-	// 	Serial.printf("%s", (const char *)data);
-	// 	if (index + len == total)
-	// 		Serial.printf("BodyEnd: %u\n", total);
-	// });
-	#ifdef ENABLE_WIFI_AP
-		#ifdef ENABLE_WIFI_AP_DNS
-			dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-			dnsServer.start(53, "*", WiFi.softAPIP());   // redirect to ESP
-		#endif
-		#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
-			server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);//only when requested from AP
-		#endif
-	#endif
+#ifdef ENABLE_WIFI_AP
+#ifdef ENABLE_WIFI_AP_DNS
+	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+	dnsServer.start(53, "*", WiFi.softAPIP());	// redirect to ESP
+#endif
+#ifdef ENABLE_WIFI_AP_CAPTIVE_PORTAL
+	server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);	 // only when requested from AP
+#endif
+#endif
 
 	server.begin();
-
-	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
-	// 	if (!audio_capture_server_client.connect(AUDIO_CAPTURE_SERVER_IP, AUDIO_CAPTURE_SERVER_PORT)) {
-	//     	Serial.println("Connection failed.");
-	// 	}
-	// #endif
-	// int count = 2;
-	// mics.left_channel_data[0] = 5895;
-	// mics.left_channel_data[1] = -5555;
-	// mics.right_channel_data[0] = -4206;
-	// mics.right_channel_data[1] = 69;
-	// httpClient.begin(wifiClient, AUDIO_CAPTURE_SERVER_URL);
-	// httpClient.addHeader("content-type", "application/octet-stream");
-	// uint8_t data[count*sizeof(int16_t)*2];
-	// memcpy(data, mics.left_channel_data, count*sizeof(int16_t));
-	// memcpy(data+count*sizeof(int16_t), mics.right_channel_data, count*sizeof(int16_t));
-	// for(int i = 0; i < count*2; i ++){
-	// 	Serial.printf("%d, ", ((int16_t*)data)[i]);
-	// }
-	// Serial.println();
-	// httpClient.POST(data, count*2*sizeof(int16_t));
-	// httpClient.end();
-	// while(1);
 
 	Serial.println("Starting...");
 	xTaskCreatePinnedToCore(
@@ -542,27 +472,26 @@ void setup() {
 }
 
 void loop() {
-	#ifdef ENABLE_WS
-		ws.cleanupClients();
-	#endif
+#ifdef ENABLE_WS
+	ws.cleanupClients();
+#endif
 
-	#ifdef ENABLE_OTA
-		ArduinoOTA.handle();
-	#endif
+#ifdef ENABLE_OTA
+	ArduinoOTA.handle();
+#endif
 
-	#ifdef ENABLE_SSE
-		if(millis() - last_sse_alive_msg_time > SSE_SEND_ALIVE_MSG_TIME || millis() < last_sse_alive_msg_time){
-			last_sse_alive_msg_time = millis();
-			sse_send_alive_msg();
-		}
-	#endif
+#ifdef ENABLE_SSE
+	if (millis() - last_sse_alive_msg_time > SSE_SEND_ALIVE_MSG_TIME || millis() < last_sse_alive_msg_time) {
+		last_sse_alive_msg_time = millis();
+		sse_send_alive_msg();
+	}
+#endif
 
-	#ifdef ENABLE_WIFI_AP
-		#ifdef ENABLE_WIFI_AP_DNS
-			dnsServer.processNextRequest();
-		#endif
-	#endif
-	// vTaskDelay()
+#ifdef ENABLE_WIFI_AP
+#ifdef ENABLE_WIFI_AP_DNS
+	dnsServer.processNextRequest();
+#endif
+#endif
 
 	// #ifdef AUDIO_CAPTURE_SERVER_ENABLED
 	// 	if(millis()-last_audio_capture_conn_check_time > 3000){
