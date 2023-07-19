@@ -4,7 +4,7 @@ build = true;
 $fn = build?200:30;
 
 include <threadlib/threadlib.scad>
-UNC_THREAD_SCALE = 1.05;
+UNC_THREAD_SCALE = 1.08;
 thread_end_wall_thickness = 0.8;
 
 base_h = 1.6;
@@ -16,11 +16,11 @@ arms_h = 4;
 solder_pads_h = 1;   // and LEDs
 
 cover_h = 1.2;
-cover_pads_h = 4.5;
+cover_pads_h = 4.2;
 
 mic_pos = [100, 19];
 mic_hole_r1 = 1;
-mic_hole_r2 = 4;
+mic_hole_r2 = 3.6;
 
 cover_holes_h = 1;
 cover_holes_r1 = 1;
@@ -87,7 +87,7 @@ difference(){
 				box();
 				usb_hole();
 			}    
-			linear_extrude(box_h) import("2D.dxf", layer="mount");
+			linear_extrude(box_h-0.2) import("2D.dxf", layer="mount");
 		}
 	}
 
