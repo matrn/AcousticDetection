@@ -18,7 +18,7 @@
 #define ENABLE_SSE	// Server Sent Events
 // #define ENABLE_SSE_CORS_HEADER   // used when you want to request server from different url (for example if you open index.html file in your browser)
 
-// #define ENABLE_WIFI_AP	// WIFI_STA otherwise
+#define ENABLE_WIFI_AP	// WIFI_STA otherwise
 /* settings bellow are not recommended because it cause performance problems */
 // #define ENABLE_WIFI_AP_404_REDIRECT
 // #define ENABLE_WIFI_AP_DNS
