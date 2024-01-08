@@ -22,17 +22,24 @@ const int correlation_window_samples_num = 1024;						  //  how many samples sho
 
 
 /* ---------- OnSet detector for acoustic impulse events ---------- */
-#define OD_SUM_THRESHOLD 500
+#define OD_SUM_THRESHOLD_DEFAULT 500
 class OnsetDetector {
 	double sum = 0;
 	double p = 0.2;
+	uint16_t OD_SUM_THRESHOLD = OD_SUM_THRESHOLD_DEFAULT;
 
    public:
+	void set_threshold(const uint16_t threshold){
+		this->OD_SUM_THRESHOLD = threshold;
+	}
+	uint16_t get_threshold(){
+		return this->OD_SUM_THRESHOLD;
+	}
 	bool detect(audio_sample_t value) {
 		/* Rekurentní odhad okamžité střední hodnoty - CZS 12. přednáška, str. 6 */
 		sum = (p * abs(value) + (1 - p) * sum) / 2;
 		// Serial.println(sum);
-		return sum > OD_SUM_THRESHOLD;
+		return sum > this->OD_SUM_THRESHOLD;
 	}
 };
 /* ---------------------------------------------------------------- */
