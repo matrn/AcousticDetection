@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <AsyncTCP.h>
+#include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
 #include <FS.h>
@@ -191,12 +192,12 @@ void dsp_func(void *param) {
 					// audio samples capture process is done
 					Serial.println("START PROCESSING");
 					capture_started = false;
-					capture_number_of_samples = 0;				
+					capture_number_of_samples = 0;
 					last_capture = millis();
 
 					xcorr_result_t xcorr_peak;
 					bool xcorr_peak_found = dsp.xcorr_max<CircularBuffer<audio_sample_t, CORR_SIZE> >(x1, x2, xcorr_peak, CORR_SIZE, max_shift_samples_num + 1, true, true, true);
-					
+
 					if (xcorr_peak_found) {
 						digitalWrite(LED_BUILTIN, HIGH);
 						int Nshift = xcorr_peak.max_pos;
@@ -246,11 +247,47 @@ void dsp_func(void *param) {
 	}
 #endif
 
+
+#define ENABLE_EEPROM_THRESHOLD
+
+#ifdef ENABLE_EEPROM_THRESHOLD
+	#define EEPROM_SIZE 2
+
+	union uint16_t_conv {
+		char b[2];
+		uint16_t val;
+	};
+	uint16_t get_OD_threshold_from_EEPROM() {
+		union uint16_t_conv data;
+		data.b[0] = EEPROM.read(0);
+		data.b[1] = EEPROM.read(1);
+		return data.val;
+	}
+
+	void set_OD_threshold_to_EEPROM(uint16_t val) {
+		od1.set_threshold(val);
+		od2.set_threshold(val);
+
+		union uint16_t_conv data;
+		data.val = val;
+		EEPROM.write(0, data.b[0]);
+		EEPROM.write(1, data.b[1]);
+	}
+#endif
+
+
 void setup() {
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, HIGH);
 	Serial.begin(115200);
 
+	#ifdef ENABLE_EEPROM_THRESHOLD
+		EEPROM.begin(EEPROM_SIZE);
+		uint16_t OD_threshold = get_OD_threshold_from_EEPROM();
+		od1.set_threshold(OD_threshold);
+		od2.set_threshold(OD_threshold);
+	#endif
+	
 	#ifndef RELEASE
 		Serial.setDebugOutput(true);
 	#endif
@@ -358,6 +395,30 @@ void setup() {
 	server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request) {
 		request->send(200, "text/plain", String(ESP.getFreeHeap()));
 	});
+
+	server.on("/get_threshold", HTTP_GET, [](AsyncWebServerRequest *request) {
+		request->send(200, "text/plain", "od1=" + String(od1.get_threshold()) + ", od2=" + String(od2.get_threshold())
+		#ifdef ENABLE_EEPROM_THRESHOLD
+			+ ", EEPROM=" + String(get_OD_threshold_from_EEPROM())
+		#endif
+		);
+	});
+
+	#ifdef ENABLE_EEPROM_THRESHOLD
+	server.on("/set_threshold", HTTP_POST, [](AsyncWebServerRequest *request) {
+		// format is th=uint16_t-number
+		// use: curl -X POST http://192.168.1.1/set_threshold -d "th=4700"
+		if (request->params() == 1) {
+			AsyncWebParameter *p = request->getParam(0);
+			if (p->isPost() && p->name() == String("th")) {
+				set_OD_threshold_to_EEPROM(p->value().toInt());
+				request->send(200, "text/plain", "OK: " + String(get_OD_threshold_from_EEPROM()));
+			} else
+				request->send(400, "text/plain", "bad request, use th=value, passed var:" + p->name());
+		}
+		request->send(400, "text/plain", "bad request, number of params is not eq to 1, use th=value");
+	});
+	#endif
 
 	// serverStatic supports gzip automatically
 	// for GMT date us bash command: LC_TIME=en_US.utf8 TZ=GMT date
