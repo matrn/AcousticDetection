@@ -272,6 +272,7 @@ void dsp_func(void *param) {
 		data.val = val;
 		EEPROM.write(0, data.b[0]);
 		EEPROM.write(1, data.b[1]);
+		EEPROM.commit();
 	}
 #endif
 
@@ -284,8 +285,10 @@ void setup() {
 	#ifdef ENABLE_EEPROM_THRESHOLD
 		EEPROM.begin(EEPROM_SIZE);
 		uint16_t OD_threshold = get_OD_threshold_from_EEPROM();
-		od1.set_threshold(OD_threshold);
-		od2.set_threshold(OD_threshold);
+		if(OD_threshold < std::numeric_limits<std::uint16_t>::max()){
+			od1.set_threshold(OD_threshold);
+			od2.set_threshold(OD_threshold);
+		}
 	#endif
 	
 	#ifndef RELEASE
